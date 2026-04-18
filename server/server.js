@@ -1,6 +1,7 @@
 import express from 'express';
 import { logger } from './middleware/loggerMiddleware.js'
 import prisma from './lib/prisma.js'; // Importamos o Prisma, não mais o pool
+import cors from 'cors';
 
 // Importando as Rotas (nome unificado)
 import rotaUsuario from './routes/user.routes.js';
@@ -12,6 +13,7 @@ import { errorHandler } from './middleware/errorHandler.js';
 import { authMiddleware } from './middleware/authMiddleware.js';
 
 const app = express();
+app.use(cors());
 const PORT = process.env.PORT || 3000;
 
 // Middleware para aceitar JSON

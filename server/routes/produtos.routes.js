@@ -21,13 +21,57 @@ router.get('/categorias', async (req, res, next) => {
   }
 });
 
+// -------------- < ROTA ANTIGA > -------------- 
+// router.get('/', async (req, res, next) => {
+//   try {
+//     const produtos = await prisma.produtos.findMany({
+//       include: {
+//         categorias: true
+//       }
+//     });
+//     return res.status(200).json(produtos);
+//   } catch (error) {
+//     next(error);
+//   }
+// });
+
+// -------------- < ROTA NOVA COM FILTROS > --------------
 router.get('/', async (req, res, next) => {
   try {
-    const produtos = await prisma.produtos.findMany({
+    // 1. Captura os filtros que o Angular enviou na URL
+    const { categoria, query, filtro } = req.query;
+
+    // 2. Prepara o objeto "where" para o Prisma
+    let prismaWhere = {};
+
+    // Se o utilizador clicou numa categoria, filtra pelo ID
+    if (categoria) {
+      prismaWhere.id_categoria = parseInt(categoria, 10);
+    }
+
+    // Se o utilizador digitou algo na barra de pesquisa, filtra pelo nome
+    if (query) {
+      prismaWhere.nome = {
+        contains: query // Procura produtos que contenham este texto
+      };
+    }
+
+    // 3. Prepara as opções completas de busca
+    let queryOptions = {
+      where: prismaWhere,
       include: {
-        categorias: true
+        categorias: true // Traz o nome da categoria junto
       }
-    });
+    };
+
+    // 4. Se o utilizador clicou no botão "Novos", ordena pelos mais recentes
+    if (filtro === 'novos') {
+      queryOptions.orderBy = { id_produto: 'desc' };
+    }
+
+    // 5. Executa a busca no banco de dados com todos os filtros aplicados
+    const produtos = await prisma.produtos.findMany(queryOptions);
+    
     return res.status(200).json(produtos);
   } catch (error) {
     next(error);
