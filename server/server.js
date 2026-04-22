@@ -20,6 +20,10 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(logger); // ← adicione essa linha
 
+app.get('/', (req, res) => {
+  res.send('🍬 Bem-vindo à API da Suki Doces! Sistema operando 100% na nuvem.');
+});
+
 // Middleware para liberar o acesso público à pasta de imagens
 app.use('/imagens', express.static('uploads'));
 
