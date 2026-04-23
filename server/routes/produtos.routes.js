@@ -111,7 +111,7 @@ router.post('/', authMiddleware, adminOnly, upload.single('imagem'), async (req,
     });
 
     return res.status(201).json({
-      mensagem: 'Doce adicionado ao catálogo com sucesso!',
+      mensagem: 'Produto adicionado ao catálogo com sucesso!',
       produto: novoProduto
     });
   } catch (error) {

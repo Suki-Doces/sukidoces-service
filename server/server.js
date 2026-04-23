@@ -9,6 +9,7 @@ import rotaProdutos from './routes/produtos.routes.js';
 import rotaPedidos from './routes/orders.routes.js';
 import rotaNotificacoes from './routes/notification.routes.js';
 import rotaAdmin from './routes/admin.routes.js';
+import rotaCarrinho from './routes/cart.routes.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { authMiddleware } from './middleware/authMiddleware.js';
 
@@ -32,6 +33,7 @@ app.use('/imagens', express.static('uploads'));
 app.use('/suki-doces/usuario', rotaUsuario);
 app.use('/suki-doces/produtos', rotaProdutos);
 app.use('/suki-doces/pedidos', rotaPedidos);
+app.use('/suki-doces/carrinho', rotaCarrinho);
 app.use('/suki-doces/notificacoes', rotaNotificacoes);
 app.use('/suki-doces/admin', rotaAdmin); // Rota protegida por authMiddleware
 app.use(errorHandler);

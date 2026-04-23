@@ -123,18 +123,34 @@ model produtos {
   estoque      estoque[]
   itens_pedido itens_pedido[]
   categorias   categorias?    @relation(fields: [id_categoria], references: [id_categoria], onUpdate: NoAction, map: "produtos_ibfk_1")
+  carrinhos    carrinho_itens[]
 
   @@index([id_categoria], map: "id_categoria")
 }
 
 model usuario {
-  id_usuario   Int       @id @default(autoincrement())
-  nome         String    @db.VarChar(100)
-  email        String    @unique(map: "email") @db.VarChar(150)
-  senha        String    @db.VarChar(255)
-  role         String    @default("cliente") @db.VarChar(20) // ← ADICIONE ESSA LINHA
-  data_criacao DateTime  @default(now()) @db.Timestamp(0)
+  id_usuario   Int      @id @default(autoincrement())
+  nome         String   @db.VarChar(100)
+  email        String   @unique(map: "email") @db.VarChar(150)
+  senha        String   @db.VarChar(255)
+  role         String   @default("cliente") @db.VarChar(20)
+  data_criacao DateTime @default(now()) @db.Timestamp(0)
   pedidos      pedidos[]
+  carrinhos    carrinho_itens[]
+}
+
+model carrinho_itens {
+  id              Int      @id @default(autoincrement())
+  usuario_id      Int
+  produto_id      Int
+  quantidade      Int
+  data_adicionado DateTime @default(now()) @db.Timestamp(0)
+
+  usuario  usuario  @relation(fields: [usuario_id], references: [id_usuario], onDelete: Cascade)
+  produto  produtos @relation(fields: [produto_id], references: [id_produto], onDelete: Cascade)
+
+  @@index([usuario_id])
+  @@index([produto_id])
 }
 
 enum cupons_tipo {
