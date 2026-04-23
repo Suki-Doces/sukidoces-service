@@ -55,48 +55,9 @@ export async function register(req, res) {
   })
 }
 
-// Login exclusivo para Administradores
-export async function loginAdmin(req, res, next) {
-  try {
-    const { email, senha } = req.body;
-
-    // 1. Busca na tabela de ADMINISTRADORES (e não de usuários)
-    const admin = await prisma.administradores.findUnique({
-      where: { email }
-    });
-
-    if (!admin) {
-      return res.status(401).json({ mensagem: 'Credenciais de admin inválidas' });
-    }
-
-    // 2. Verifica a senha 
-    // (Nota: No seu banco está '123456' em texto limpo. Em produção, use bcrypt aqui também!)
-    if (senha !== admin.senha) { 
-      return res.status(401).json({ mensagem: 'Credenciais de admin inválidas' });
-    }
-
-    // 3. Gera o Token com a "role" chumbada como admin
-    const token = jwt.sign(
-      { 
-        id: admin.id_admin, 
-        email: admin.email,
-        role: 'admin' // ← A mágica acontece aqui!
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: '1d' }
-    );
-
-    return res.status(200).json({
-      mensagem: 'Login de Administrador bem-sucedido',
-      token,
-      admin: { id: admin.id_admin, nome: admin.nome, email: admin.email }
-    });
-
-  } catch (error) {
-    next(error);
-  }
-}
-
+// =======================================================================
+// LOGIN UNIFICADO: Aceita tanto Clientes quanto Administradores
+// =======================================================================
 export async function login(req, res) {
   const { email, senha } = req.body
 
@@ -107,36 +68,67 @@ export async function login(req, res) {
     return res.status(400).json({ message: 'senha é obrigatória' })
   }
 
+  // 1. PRIMEIRO: Tenta encontrar o e-mail na tabela de USUÁRIOS
   const user = await prisma.usuario.findUnique({
     where: { email: email.trim().toLowerCase() }
   })
-  if (!user) {
-    return res.status(401).json({ message: 'Credenciais inválidas' })
-  }
 
-  const match = await bcrypt.compare(senha, user.senha)
-  if (!match) {
-    return res.status(401).json({ message: 'Credenciais inválidas' })
-  }
-
-  const token = jwt.sign(
-    { 
-      id: user.id_usuario, 
-      email: user.email,
-      role: user.role // ← ADICIONE ESSA LINHA AQUI
-    },
-    process.env.JWT_SECRET,
-    { expiresIn: '7d' }
-  )
-
-  return res.status(200).json({
-    message: 'Login realizado com sucesso',
-    token: token,
-    user: {
-      id: user.id_usuario,
-      nome: user.nome,
-      email: user.email,
-      nivel: user.role, // ← E AQUI TAMBÉM!
+  if (user) {
+    // Se achou, verifica a senha criptografada
+    const match = await bcrypt.compare(senha, user.senha)
+    if (!match) {
+      return res.status(401).json({ message: 'Credenciais inválidas' })
     }
+
+    const token = jwt.sign(
+      { id: user.id_usuario, email: user.email, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    )
+
+    return res.status(200).json({
+      message: 'Login realizado com sucesso',
+      token: token,
+      user: {
+        id: user.id_usuario,
+        nome: user.nome,
+        email: user.email,
+        nivel: user.role, // Vai enviar 'cliente' ou o role que estiver lá
+      }
+    })
+  }
+
+  // 2. SEGUNDO: Se não achou na tabela de usuários, tenta na tabela de ADMINISTRADORES
+  const admin = await prisma.administradores.findUnique({
+    where: { email: email.trim().toLowerCase() }
   })
+
+  if (admin) {
+    // Se achou, verifica a senha limpa (conforme o seu banco atual)
+    if (senha !== admin.senha) { 
+      return res.status(401).json({ message: 'Credenciais inválidas' })
+    }
+
+    const token = jwt.sign(
+      { id: admin.id_admin, email: admin.email, role: 'admin' },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    )
+
+    // Aqui está o truque para não quebrar o Angular! 
+    // Devolvemos "user" e "nivel" para o frontend não notar a diferença das tabelas.
+    return res.status(200).json({
+      message: 'Login de Administrador bem-sucedido',
+      token: token,
+      user: {
+        id: admin.id_admin,
+        nome: admin.nome,
+        email: admin.email,
+        nivel: 'admin' // Força a palavra 'admin' para o Angular redirecionar
+      }
+    })
+  }
+
+  // 3. TERCEIRO: Se não achou o e-mail em NENHUMA das duas tabelas, recusa.
+  return res.status(401).json({ message: 'Credenciais inválidas' })
 }
