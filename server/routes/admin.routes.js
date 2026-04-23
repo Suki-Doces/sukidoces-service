@@ -1,12 +1,12 @@
 import express from 'express';
 import { prisma } from '../lib/prisma.js'; // <-- NÃO ESQUEÇA ESSA LINHA
-import { loginAdmin } from '../controller/auth.controller.js';
+import { login } from '../controller/auth.controller.js';
 import { authMiddleware, adminOnly } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
 // Porta de entrada pública para o dono da loja
-router.post('/login', loginAdmin);
+router.post('/login', login);
 
 // === Daqui pra baixo ficam as rotas protegidas do admin ===
 
