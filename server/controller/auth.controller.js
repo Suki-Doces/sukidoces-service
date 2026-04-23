@@ -32,12 +32,24 @@ export async function register(req, res) {
     }
   })
 
+  const token = jwt.sign(
+    {
+      id: user.id_usuario, 
+      email: user.email,
+      role: user.role
+    },
+    process.env.JWT_SECRET,
+    { expiresIn: '7d' }
+  )
+
   return res.status(201).json({
     message: 'Usuário criado com sucesso',
-    usuario: {
+    token: token, // Angular: "E o token??? AQUI!"
+    user: {
       id: user.id_usuario,
       nome: user.nome,
       email: user.email,
+      nivel: user.role,
       data_criacao: user.data_criacao
     }
   })
@@ -119,6 +131,12 @@ export async function login(req, res) {
 
   return res.status(200).json({
     message: 'Login realizado com sucesso',
-    token
+    token: token,
+    user: {
+      id: user.id_usuario,
+      nome: user.nome,
+      email: user.email,
+      nivel: user.role, // ← E AQUI TAMBÉM!
+    }
   })
 }
