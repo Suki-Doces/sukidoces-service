@@ -3,7 +3,8 @@ import { logger } from './middleware/loggerMiddleware.js'
 import prisma from './lib/prisma.js'; // Importamos o Prisma, não mais o pool
 import cors from 'cors';
 
-// Importando as Rotas (nome unificado)
+// Importando as Rotas (nome unificado):
+import rotaCategoria from './routes/category.routes.js';
 import rotaUsuario from './routes/user.routes.js';
 import rotaProdutos from './routes/produtos.routes.js';
 import rotaPedidos from './routes/orders.routes.js';
@@ -36,6 +37,7 @@ app.use('/suki-doces/pedidos', rotaPedidos);
 app.use('/suki-doces/carrinho', rotaCarrinho);
 app.use('/suki-doces/notificacoes', rotaNotificacoes);
 app.use('/suki-doces/admin', rotaAdmin); // Rota protegida por authMiddleware
+app.use('/suki-doces/admin/categorias', rotaCategoria); // A nossa nova rota alinhada com o seu padrão
 app.use(errorHandler);
 
 // Transformamos o teste em uma função de inicialização
