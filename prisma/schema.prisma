@@ -24,17 +24,6 @@ model categorias {
 }
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
-model clientes {
-  id_cliente      Int         @id @default(autoincrement())
-  nome            String      @db.VarChar(100)
-  email           String      @unique(map: "email") @db.VarChar(150)
-  senha           String?     @db.VarChar(255)
-  telefone        String?     @db.VarChar(20)
-  data_nascimento DateTime?   @db.Date
-  status_id       Boolean     @default(true)
-  data_cadastro   DateTime    @default(now()) @db.Timestamp(0)
-  enderecos       enderecos[]
-}
 
 model cupons {
   id_cupom Int         @id @default(autoincrement())
@@ -46,9 +35,29 @@ model cupons {
   pedidos  pedidos[]
 }
 
+model usuario {
+  id_usuario      Int       @id @default(autoincrement())
+  nome            String    @db.VarChar(100)
+  email           String    @unique(map: "email") @db.VarChar(150)
+  senha           String    @db.VarChar(255)
+  role            String    @default("cliente") @db.VarChar(20)
+  
+  // --- CAMPOS TRAZIDOS DA ANTIGA TABELA DE CLIENTES ---
+  telefone        String?   @db.VarChar(20)
+  data_nascimento DateTime? @db.Date
+  status_id       Boolean   @default(true)
+  // ----------------------------------------------------
+
+  data_criacao    DateTime  @default(now()) @db.Timestamp(0)
+  
+  pedidos         pedidos[]
+  carrinhos       carrinho_itens[]
+  enderecos       enderecos[] // A ligação com endereços vem para cá!
+}
+
 model enderecos {
   id_endereco Int      @id @default(autoincrement())
-  id_cliente  Int
+  id_usuario  Int      // Mudamos de id_cliente para id_usuario
   cep         String   @db.VarChar(10)
   logradouro  String   @db.VarChar(255)
   numero      String   @db.VarChar(10)
@@ -56,9 +65,11 @@ model enderecos {
   bairro      String?  @db.VarChar(100)
   cidade      String?  @db.VarChar(100)
   estado      String?  @db.Char(2)
-  clientes    clientes @relation(fields: [id_cliente], references: [id_cliente], onDelete: Cascade, onUpdate: NoAction, map: "enderecos_ibfk_1")
+  
+  // Atualizamos a relação para a tabela usuario
+  usuario     usuario  @relation(fields: [id_usuario], references: [id_usuario], onDelete: Cascade, onUpdate: NoAction, map: "enderecos_ibfk_1")
 
-  @@index([id_cliente], map: "id_cliente")
+  @@index([id_usuario], map: "id_usuario")
 }
 
 model estoque {
@@ -128,16 +139,6 @@ model produtos {
   @@index([id_categoria], map: "id_categoria")
 }
 
-model usuario {
-  id_usuario   Int      @id @default(autoincrement())
-  nome         String   @db.VarChar(100)
-  email        String   @unique(map: "email") @db.VarChar(150)
-  senha        String   @db.VarChar(255)
-  role         String   @default("cliente") @db.VarChar(20)
-  data_criacao DateTime @default(now()) @db.Timestamp(0)
-  pedidos      pedidos[]
-  carrinhos    carrinho_itens[]
-}
 
 model carrinho_itens {
   id              Int      @id @default(autoincrement())

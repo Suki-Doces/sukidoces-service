@@ -4,6 +4,7 @@ import prisma from './lib/prisma.js'; // Importamos o Prisma, não mais o pool
 import cors from 'cors';
 
 // Importando as Rotas (nome unificado):
+import RotaCliente from './routes/clientes.routes.js';
 import rotaCategoria from './routes/category.routes.js';
 import rotaUsuario from './routes/user.routes.js';
 import rotaProdutos from './routes/produtos.routes.js';
@@ -31,13 +32,18 @@ app.use('/imagens', express.static('uploads'));
 
 
 // Conectando as rotas da Suki Doces
-app.use('/suki-doces/usuario', rotaUsuario);
-app.use('/suki-doces/produtos', rotaProdutos);
-app.use('/suki-doces/pedidos', rotaPedidos);
+// --- ROTAS PÚBLICAS (Loja) ---
+// A loja precisa ver os produtos e gerenciar o carrinho
+app.use('/suki-doces/produtos', rotaProdutos); 
 app.use('/suki-doces/carrinho', rotaCarrinho);
-app.use('/suki-doces/notificacoes', rotaNotificacoes);
-app.use('/suki-doces/admin', rotaAdmin); // Rota protegida por authMiddleware
-app.use('/suki-doces/admin/categorias', rotaCategoria); // A nossa nova rota alinhada com o seu padrão
+
+// --- ROTAS PRIVADAS (Painel Admin) ---
+// Idealmente, você deve passar o seu authMiddleware aqui para proteger tudo!
+app.use('/suki-doces/admin', rotaAdmin); 
+app.use('/suki-doces/admin/categorias', rotaCategoria);
+app.use('/suki-doces/admin/clientes', RotaCliente); // <-- Mudamos aqui!
+app.use('/suki-doces/admin/pedidos', rotaPedidos);
+app.use('/suki-doces/admin/notificacoes', rotaNotificacoes);
 app.use(errorHandler);
 
 // Transformamos o teste em uma função de inicialização
