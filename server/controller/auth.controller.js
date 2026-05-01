@@ -74,8 +74,28 @@ export async function login(req, res) {
   })
 
   if (user) {
-    // Se achou, verifica a senha criptografada
-    const match = await bcrypt.compare(senha, user.senha)
+    // --- LÓGICA DE VALIDAÇÃO COM FALLBACK PARA CLIENTES ANTIGOS ---
+    let match = false;
+
+    try {
+      // Tenta validar a senha como Hash (Padrão)
+      match = await bcrypt.compare(senha, user.senha);
+    } catch (err) {
+      match = false;
+    }
+
+    // FALLBACK: Se falhou no hash, verifica se é uma senha limpa da tabela antiga de clientes
+    if (!match && user.senha === senha) {
+      match = true;
+      
+      // Migração Silenciosa: Atualiza a senha no banco para o hash seguro
+      const hashedSenha = await bcrypt.hash(senha, 10);
+      await prisma.usuario.update({
+        where: { id_usuario: user.id_usuario },
+        data: { senha: hashedSenha }
+      });
+    }
+
     if (!match) {
       return res.status(401).json({ message: 'Credenciais inválidas' })
     }
@@ -93,7 +113,7 @@ export async function login(req, res) {
         id: user.id_usuario,
         nome: user.nome,
         email: user.email,
-        nivel: user.role, // Vai enviar 'cliente' ou o role que estiver lá
+        nivel: user.role, 
       }
     })
   }
@@ -104,7 +124,7 @@ export async function login(req, res) {
   })
 
   if (admin) {
-    // Se achou, verifica a senha limpa (conforme o seu banco atual)
+    // Verifica a senha limpa (conforme a estrutura do seu banco para admins)
     if (senha !== admin.senha) { 
       return res.status(401).json({ message: 'Credenciais inválidas' })
     }
@@ -115,8 +135,6 @@ export async function login(req, res) {
       { expiresIn: '7d' }
     )
 
-    // Aqui está o truque para não quebrar o Angular! 
-    // Devolvemos "user" e "nivel" para o frontend não notar a diferença das tabelas.
     return res.status(200).json({
       message: 'Login de Administrador bem-sucedido',
       token: token,
@@ -124,7 +142,7 @@ export async function login(req, res) {
         id: admin.id_admin,
         nome: admin.nome,
         email: admin.email,
-        nivel: 'admin' // Força a palavra 'admin' para o Angular redirecionar
+        nivel: 'admin' // O Angular continua recebendo 'admin' e faz o redirecionamento
       }
     })
   }

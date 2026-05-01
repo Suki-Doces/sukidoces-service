@@ -35,6 +35,7 @@ app.use('/imagens', express.static('uploads'));
 // Conectando as rotas da Suki Doces
 // --- ROTAS PÚBLICAS (Loja) ---
 // A loja precisa ver os produtos e gerenciar o carrinho
+app.use('/suki-doces/usuario', rotaUsuario); // <-- Sem essa linha, não loga/cadastra!
 app.use('/suki-doces/produtos', rotaProdutos); 
 app.use('/suki-doces/carrinho', rotaCarrinho);
 
