@@ -5,7 +5,7 @@ import cors from 'cors';
 
 // Importando as Rotas (nome unificado):
 import rotaChat from './routes/chat.routes.js';
-import RotaCliente from './routes/clientes.routes.js';
+import rotaCliente from './routes/clientes.routes.js';
 import rotaCategoria from './routes/category.routes.js';
 import rotaUsuario from './routes/user.routes.js';
 import rotaProdutos from './routes/produtos.routes.js';
@@ -44,9 +44,10 @@ app.use('/api/chat', rotaChat);
 // Idealmente, você deve passar o seu authMiddleware aqui para proteger tudo!
 app.use('/suki-doces/admin', rotaAdmin); 
 app.use('/suki-doces/admin/categorias', rotaCategoria);
-app.use('/suki-doces/admin/clientes', RotaCliente); // <-- Mudamos aqui!
+app.use('/suki-doces/admin/clientes', rotaCliente); // <-- Mudamos aqui!
 app.use('/suki-doces/admin/pedidos', rotaPedidos);
 app.use('/suki-doces/admin/notificacoes', rotaNotificacoes);
+app.use('/suki-doces/admin/configuracoes', rotaConfig);
 app.use(errorHandler);
 
 // Transformamos o teste em uma função de inicialização
