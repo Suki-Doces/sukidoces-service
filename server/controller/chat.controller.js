@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import prisma from '../lib/prisma.js';
+import { prisma } from '../lib/prisma.js';
 
 // Inicializa a API do Google com a chave do .env
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -13,20 +13,13 @@ export const chatWithGemini = async (req, res) => {
         }
 
         // 1. Vai buscar os produtos ativos à base de dados
-        const produtosDB = await prisma.produto.findMany({
-            select: {
-                nome: true,
-                preco: true,
-                descricao: true,
-                categoria: { select: { nome: true } }
-            }
-        });
+        const produtosDB = await prisma.produtos.findMany(); // Traz tudo sem filtrar relações
 
         const catalogo = JSON.stringify(produtosDB);
 
         // 2. Configura a Personalidade e o Contexto
         const model = genAI.getGenerativeModel({
-            model: "gemini-1.5-flash",
+            model: "gemini-2.5-flash-lite",
             systemInstruction: `És a assistente virtual amigável de uma loja online de doceria chamada SukiDoces.
             O teu objetivo é ajudar os clientes a encontrar doces e/ou produtos, consultar preços e dar sugestões baseadas no orçamento deles.
             Seja simpática, use emojis e respostas curtas (máximo 2-3 parágrafos).
@@ -53,6 +46,6 @@ export const chatWithGemini = async (req, res) => {
 
     } catch (error) {
         console.error('Erro no SukiBot:', error);
-        res.status(500).json({ error: 'Desculpe, a nossa cozinha está com problemas técnicos. Tente novamente mais tarde!' });
+        res.status(500).json({ error: 'Desculpe, a nosso assistente está com problemas técnicos. Tente novamente mais tarde!' });
     }
 };

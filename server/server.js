@@ -5,6 +5,7 @@ import cors from 'cors';
 
 // Importando as Rotas (nome unificado):
 import rotaChat from './routes/chat.routes.js';
+import rotaConfig from './routes/admin-perfil.routes.js'
 import rotaCliente from './routes/clientes.routes.js';
 import rotaCategoria from './routes/category.routes.js';
 import rotaUsuario from './routes/user.routes.js';
@@ -38,7 +39,7 @@ app.use('/imagens', express.static('uploads'));
 app.use('/suki-doces/usuario', rotaUsuario); // <-- Sem essa linha, não loga/cadastra!
 app.use('/suki-doces/produtos', rotaProdutos); 
 app.use('/suki-doces/carrinho', rotaCarrinho);
-app.use('/api/chat', rotaChat);
+app.use('/suki-doces/chat', rotaChat);
 
 // --- ROTAS PRIVADAS (Painel Admin) ---
 // Idealmente, você deve passar o seu authMiddleware aqui para proteger tudo!
