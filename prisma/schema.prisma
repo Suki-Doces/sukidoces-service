@@ -23,8 +23,6 @@ model categorias {
   produtos     produtos[]
 }
 
-/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
-
 model cupons {
   id_cupom Int         @id @default(autoincrement())
   codigo   String      @unique(map: "codigo") @db.VarChar(50)
@@ -36,28 +34,25 @@ model cupons {
 }
 
 model usuario {
-  id_usuario      Int       @id @default(autoincrement())
-  nome            String    @db.VarChar(100)
-  email           String    @unique(map: "email") @db.VarChar(150)
-  senha           String    @db.VarChar(255)
-  role            String    @default("cliente") @db.VarChar(20)
-  
-  // --- CAMPOS TRAZIDOS DA ANTIGA TABELA DE CLIENTES ---
-  telefone        String?   @db.VarChar(20)
-  data_nascimento DateTime? @db.Date
-  status_id       Boolean   @default(true)
-  // ----------------------------------------------------
-
-  data_criacao    DateTime  @default(now()) @db.Timestamp(0)
-  
+  id_usuario      Int              @id @default(autoincrement())
+  nome            String           @db.VarChar(100)
+  email           String           @unique(map: "email") @db.VarChar(150)
+  senha           String           @db.VarChar(255)
+  role            String           @default("cliente") @db.VarChar(20)
+  telefone        String?          @db.VarChar(20)
+  data_nascimento DateTime?        @db.Date
+  status_id       Boolean          @default(true)
+  data_criacao    DateTime         @default(now()) @db.Timestamp(0)
   pedidos         pedidos[]
   carrinhos       carrinho_itens[]
-  enderecos       enderecos[] // A ligação com endereços vem para cá!
+  enderecos       enderecos[]
+  // ADICIONADO: relação com notificacoes
+  notificacoes    notificacoes[]
 }
 
 model enderecos {
   id_endereco Int      @id @default(autoincrement())
-  id_usuario  Int      // Mudamos de id_cliente para id_usuario
+  id_usuario  Int
   cep         String   @db.VarChar(10)
   logradouro  String   @db.VarChar(255)
   numero      String   @db.VarChar(10)
@@ -65,8 +60,6 @@ model enderecos {
   bairro      String?  @db.VarChar(100)
   cidade      String?  @db.VarChar(100)
   estado      String?  @db.Char(2)
-  
-  // Atualizamos a relação para a tabela usuario
   usuario     usuario  @relation(fields: [id_usuario], references: [id_usuario], onDelete: Cascade, onUpdate: NoAction, map: "enderecos_ibfk_1")
 
   @@index([id_usuario], map: "id_usuario")
@@ -123,22 +116,21 @@ model pedidos {
 }
 
 model produtos {
-  id_produto   Int            @id @default(autoincrement())
+  id_produto   Int              @id @default(autoincrement())
   id_categoria Int?
-  nome         String         @db.VarChar(100)
-  descricao    String?        @db.Text
-  preco        Decimal        @db.Decimal(10, 2)
-  quantidade   Int?           @default(0)
-  imagem       String?        @db.VarChar(255)
-  data_criacao DateTime       @default(now()) @db.Timestamp(0)
+  nome         String           @db.VarChar(100)
+  descricao    String?          @db.Text
+  preco        Decimal          @db.Decimal(10, 2)
+  quantidade   Int?             @default(0)
+  imagem       String?          @db.VarChar(255)
+  data_criacao DateTime         @default(now()) @db.Timestamp(0)
   estoque      estoque[]
   itens_pedido itens_pedido[]
-  categorias   categorias?    @relation(fields: [id_categoria], references: [id_categoria], onUpdate: NoAction, map: "produtos_ibfk_1")
+  categorias   categorias?      @relation(fields: [id_categoria], references: [id_categoria], onUpdate: NoAction, map: "produtos_ibfk_1")
   carrinhos    carrinho_itens[]
 
   @@index([id_categoria], map: "id_categoria")
 }
-
 
 model carrinho_itens {
   id              Int      @id @default(autoincrement())
@@ -146,12 +138,27 @@ model carrinho_itens {
   produto_id      Int
   quantidade      Int
   data_adicionado DateTime @default(now()) @db.Timestamp(0)
-
-  usuario  usuario  @relation(fields: [usuario_id], references: [id_usuario], onDelete: Cascade)
-  produto  produtos @relation(fields: [produto_id], references: [id_produto], onDelete: Cascade)
+  usuario         usuario  @relation(fields: [usuario_id], references: [id_usuario], onDelete: Cascade)
+  produto         produtos @relation(fields: [produto_id], references: [id_produto], onDelete: Cascade)
 
   @@index([usuario_id])
   @@index([produto_id])
+}
+
+// ADICIONADO: model notificacoes que estava sendo usado em admin.routes.js
+// e orders.routes.js mas não existia no schema — causava crash ao criar pedido
+// ou atualizar status de pedido
+model notificacoes {
+  id_notificacao Int      @id @default(autoincrement())
+  id_usuario     Int
+  titulo         String   @db.VarChar(255)
+  mensagem       String   @db.Text
+  tipo           String   @default("geral") @db.VarChar(50)
+  lido           Boolean  @default(false)
+  data_criacao   DateTime @default(now()) @db.Timestamp(0)
+  usuario        usuario  @relation(fields: [id_usuario], references: [id_usuario], onDelete: Cascade)
+
+  @@index([id_usuario])
 }
 
 enum cupons_tipo {

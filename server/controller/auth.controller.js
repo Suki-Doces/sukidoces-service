@@ -33,18 +33,14 @@ export async function register(req, res) {
   })
 
   const token = jwt.sign(
-    {
-      id: user.id_usuario, 
-      email: user.email,
-      role: user.role
-    },
+    { id: user.id_usuario, email: user.email, role: user.role },
     process.env.JWT_SECRET,
     { expiresIn: '7d' }
   )
 
   return res.status(201).json({
     message: 'Usuário criado com sucesso',
-    token: token, // Angular: "E o token??? AQUI!"
+    token: token,
     user: {
       id: user.id_usuario,
       nome: user.nome,
@@ -74,21 +70,17 @@ export async function login(req, res) {
   })
 
   if (user) {
-    // --- LÓGICA DE VALIDAÇÃO COM FALLBACK PARA CLIENTES ANTIGOS ---
     let match = false;
 
     try {
-      // Tenta validar a senha como Hash (Padrão)
       match = await bcrypt.compare(senha, user.senha);
     } catch (err) {
       match = false;
     }
 
-    // FALLBACK: Se falhou no hash, verifica se é uma senha limpa da tabela antiga de clientes
+    // Fallback para senhas antigas em texto puro (migração silenciosa)
     if (!match && user.senha === senha) {
       match = true;
-      
-      // Migração Silenciosa: Atualiza a senha no banco para o hash seguro
       const hashedSenha = await bcrypt.hash(senha, 10);
       await prisma.usuario.update({
         where: { id_usuario: user.id_usuario },
@@ -113,19 +105,40 @@ export async function login(req, res) {
         id: user.id_usuario,
         nome: user.nome,
         email: user.email,
-        nivel: user.role, 
+        nivel: user.role,
       }
     })
   }
 
-  // 2. SEGUNDO: Se não achou na tabela de usuários, tenta na tabela de ADMINISTRADORES
+  // 2. SEGUNDO: Tenta na tabela de ADMINISTRADORES
   const admin = await prisma.administradores.findUnique({
     where: { email: email.trim().toLowerCase() }
   })
 
   if (admin) {
-    // Verifica a senha limpa (conforme a estrutura do seu banco para admins)
-    if (senha !== admin.senha) { 
+    // CORRIGIDO: era comparação direta sem bcrypt (falha de segurança grave)
+    // Agora tenta bcrypt primeiro, com fallback para senha em texto puro
+    let match = false;
+
+    try {
+      // Tenta comparar como hash (para admins que já tiveram senha migrada)
+      match = await bcrypt.compare(senha, admin.senha);
+    } catch (err) {
+      match = false;
+    }
+
+    // Fallback: se a senha ainda está em texto puro no banco do admin
+    if (!match && admin.senha === senha) {
+      match = true;
+      // Migração silenciosa: hasheia a senha do admin também
+      const hashedSenha = await bcrypt.hash(senha, 10);
+      await prisma.administradores.update({
+        where: { id_admin: admin.id_admin },
+        data: { senha: hashedSenha }
+      });
+    }
+
+    if (!match) {
       return res.status(401).json({ message: 'Credenciais inválidas' })
     }
 
@@ -142,11 +155,11 @@ export async function login(req, res) {
         id: admin.id_admin,
         nome: admin.nome,
         email: admin.email,
-        nivel: 'admin' // O Angular continua recebendo 'admin' e faz o redirecionamento
+        nivel: 'admin'
       }
     })
   }
 
-  // 3. TERCEIRO: Se não achou o e-mail em NENHUMA das duas tabelas, recusa.
+  // 3. TERCEIRO: E-mail não encontrado em nenhuma tabela
   return res.status(401).json({ message: 'Credenciais inválidas' })
 }

@@ -1,7 +1,6 @@
 import express from 'express';
 import prisma from '../lib/prisma.js';
 import { upload } from '../middleware/uploadMiddleware.js';
-// 1. Importando nossos "cadeados" de segurança
 import { authMiddleware, adminOnly } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
@@ -10,6 +9,8 @@ const router = express.Router();
 // ROTAS PÚBLICAS (Clientes podem acessar)
 // ==========================================
 
+// IMPORTANTE: /categorias deve vir ANTES de /:id
+// senão o Express interpreta "categorias" como um ID
 router.get('/categorias', async (req, res, next) => {
   try {
     const categorias = await prisma.categorias.findMany({
@@ -22,57 +23,36 @@ router.get('/categorias', async (req, res, next) => {
   }
 });
 
-// -------------- < ROTA ANTIGA > -------------- 
-// router.get('/', async (req, res, next) => {
-//   try {
-//     const produtos = await prisma.produtos.findMany({
-//       include: {
-//         categorias: true
-//       }
-//     });
-//     return res.status(200).json(produtos);
-//   } catch (error) {
-//     next(error);
-//   }
-// });
-
-// -------------- < ROTA NOVA COM FILTROS > --------------
-router.get('/', upload.single('imagem'), async (req, res, next) => {
+// CORRIGIDO: removido upload.single('imagem') do GET — middleware de upload
+// num GET não faz sentido e pode causar erros
+router.get('/', async (req, res, next) => {
   try {
-    // 1. Captura os filtros que o Angular enviou na URL
     const { categoria, query, filtro } = req.query;
 
-    // 2. Prepara o objeto "where" para o Prisma
     let prismaWhere = {};
 
-    // Se o utilizador clicou numa categoria, filtra pelo ID
     if (categoria) {
       prismaWhere.id_categoria = parseInt(categoria, 10);
     }
 
-    // Se o utilizador digitou algo na barra de pesquisa, filtra pelo nome
     if (query) {
       prismaWhere.nome = {
-        contains: query // Procura produtos que contenham este texto
+        contains: query
       };
     }
 
-    // 3. Prepara as opções completas de busca
     let queryOptions = {
       where: prismaWhere,
       include: {
-        categorias: true // Traz o nome da categoria junto
+        categorias: true
       }
     };
 
-    // 4. Se o utilizador clicou no botão "Novos", ordena pelos mais recentes
     if (filtro === 'novos') {
       queryOptions.orderBy = { id_produto: 'desc' };
     }
 
-    // 5. Executa a busca no banco de dados com todos os filtros aplicados
     const produtos = await prisma.produtos.findMany(queryOptions);
-    
     return res.status(200).json(produtos);
   } catch (error) {
     next(error);
@@ -81,29 +61,23 @@ router.get('/', upload.single('imagem'), async (req, res, next) => {
 
 router.get('/:id', async (req, res, next) => {
   try {
-    // Converte o ID da URL para número
     const id = parseInt(req.params.id);
 
-    // Validação de segurança para garantir que o ID é um número válido
     if (isNaN(id)) {
       return res.status(400).json({ mensagem: 'ID de produto inválido' });
     }
 
-    // Busca o produto no banco de dados usando o Prisma
     const produto = await prisma.produtos.findUnique({
-      where: { id_produto: id }
+      where: { id_produto: id },
+      include: { categorias: true }
     });
 
-    // Se o produto não existir, retorna erro 404
     if (!produto) {
       return res.status(404).json({ mensagem: 'Produto não encontrado' });
     }
 
-    // Retorna os dados do produto para o frontend
     return res.status(200).json(produto);
-    
   } catch (error) {
-    // Repassa o erro para o middleware de tratamento de erros
     next(error);
   }
 });
@@ -112,15 +86,11 @@ router.get('/:id', async (req, res, next) => {
 // ROTAS PROTEGIDAS (Apenas Admin)
 // ==========================================
 
-
-// CRIAR NOVO PRODUTO (POST) - Agora com upload de imagem!
-router.post('/', upload.single('imagem'), async (req, res, next) => {
+// CORRIGIDO: adicionado authMiddleware + adminOnly no POST
+// antes qualquer um podia criar produtos
+router.post('/', authMiddleware, adminOnly, upload.single('imagem'), async (req, res, next) => {
   try {
-    // Note que agora pegamos os dados de req.body e o arquivo de req.file
     const { nome, descricao, preco, quantidade, id_categoria } = req.body;
-
-    // Se o Multer processou um arquivo, o nome gerado estará em req.file.filename
-    // Se não enviaram foto, fica null
     const nomeDaImagem = req.file ? req.file.filename : null;
 
     if (!nome || !preco) {
@@ -131,11 +101,10 @@ router.post('/', upload.single('imagem'), async (req, res, next) => {
       data: {
         nome,
         descricao,
-        // Como os dados vêm de um formulário (texto), precisamos converter números:
         preco: parseFloat(preco),
-        quantidade: quantidade ? parseInt(quantidade, 10) : 0, 
+        quantidade: quantidade ? parseInt(quantidade, 10) : 0,
         id_categoria: id_categoria ? parseInt(id_categoria, 10) : null,
-        imagem: nomeDaImagem // Salvando o NOME do arquivo no banco!
+        imagem: nomeDaImagem
       }
     });
 
@@ -148,11 +117,12 @@ router.post('/', upload.single('imagem'), async (req, res, next) => {
   }
 });
 
-// EDITAR PRODUTO (PUT)
-router.put('/:id', upload.single('imagem'), async (req, res, next) => {
+// CORRIGIDO: adicionado authMiddleware + adminOnly no PUT
+// antes qualquer um podia editar produtos
+router.put('/:id', authMiddleware, adminOnly, upload.single('imagem'), async (req, res, next) => {
   try {
     const id = parseInt(req.params.id);
-    const { nome, descricao, preco, quantidade, id_categoria, imagem } = req.body;
+    const { nome, descricao, preco, quantidade, id_categoria } = req.body;
 
     const produto = await prisma.produtos.findUnique({
       where: { id_produto: id }
@@ -162,15 +132,19 @@ router.put('/:id', upload.single('imagem'), async (req, res, next) => {
       return res.status(404).json({ mensagem: 'Produto não encontrado' });
     }
 
+    // Se enviou nova imagem, usa o nome gerado pelo Multer
+    // senão mantém a imagem atual
+    const novaImagem = req.file ? req.file.filename : undefined;
+
     const atualizado = await prisma.produtos.update({
       where: { id_produto: id },
       data: {
         ...(nome && { nome }),
-        ...(descricao && { descricao }),
-        ...(preco && { preco }),
-        ...(quantidade !== undefined && { quantidade }), 
-        ...(id_categoria && { id_categoria }),
-        ...(imagem && { imagem })
+        ...(descricao !== undefined && { descricao }),
+        ...(preco && { preco: parseFloat(preco) }),
+        ...(quantidade !== undefined && { quantidade: parseInt(quantidade, 10) }),
+        ...(id_categoria && { id_categoria: parseInt(id_categoria, 10) }),
+        ...(novaImagem && { imagem: novaImagem })
       }
     });
 
@@ -183,12 +157,10 @@ router.put('/:id', upload.single('imagem'), async (req, res, next) => {
   }
 });
 
-// DELETAR PRODUTO (DELETE)
 router.delete('/:id', authMiddleware, adminOnly, async (req, res, next) => {
   try {
     const id = parseInt(req.params.id);
 
-    // 1. Verifica se o doce existe antes de tentar apagar
     const produto = await prisma.produtos.findUnique({
       where: { id_produto: id }
     });
@@ -197,7 +169,6 @@ router.delete('/:id', authMiddleware, adminOnly, async (req, res, next) => {
       return res.status(404).json({ mensagem: 'Produto não encontrado' });
     }
 
-    // 2. Deleta do banco
     await prisma.produtos.delete({
       where: { id_produto: id }
     });
