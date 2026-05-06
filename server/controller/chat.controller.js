@@ -34,7 +34,7 @@ exports.processarChat = async (req, res) => {
     // 4. Configura o modelo com a Instrução de Sistema
     // Recomendado usar o gemini-1.5-flash, pois ele é rápido e suporta systemInstruction perfeitamente
     const model = genAI.getGenerativeModel({ 
-      model: "gemini-1.5-flash",
+      model: "gemini-2.5-flash",
       systemInstruction: systemInstruction 
     });
 
