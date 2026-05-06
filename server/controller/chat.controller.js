@@ -1,19 +1,19 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+import { PrismaClient } from '@prisma/client';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
+const prisma = new PrismaClient();
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-exports.processarChat = async (req, res) => {
+export const chatWithGemini = async (req, res) => {
   try {
     const { message, history } = req.body;
 
-    // 1. Busca os produtos no banco
-    const produtos = await prisma.produto.findMany({
+    // 1. CORREÇÃO AQUI: prisma.produtos (com 's') em vez de prisma.produto
+    const listaProdutos = await prisma.produtos.findMany({
       select: { id_produto: true, nome: true, preco: true }
     });
 
-    const catalogoString = produtos
+    const catalogoString = listaProdutos
       .map(p => `- ${p.nome} (ID: ${p.id_produto}, Preço: R$ ${p.preco})`)
       .join('\n');
 
