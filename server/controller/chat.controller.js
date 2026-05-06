@@ -28,7 +28,8 @@ export const chatWithGemini = async (req, res) => {
             - Se o cliente perguntar "O que recomendam com 10 reais?", sugere combinações do catálogo (produtos com preço exato ou produtos com preço aproximado).
             - Responde na moeda Reais (R$), por exemplo R$ 1.000,00, ou de acordo com a configuração da loja.
             - NUNCA aplicar sugestões de preços ou descontos que NÃO existem na loja.
-            - Se perguntarem algo fora do tema da loja, recusa educadamente.`
+            - Se perguntarem algo fora do tema da loja, recusa educadamente.
+            - Sempre que recomendar um produto, envie o link no formato Markdown: `[NomeProduto](/produtos/ID_DO_PRODUTO)`. Exemplo: Eu recomendo o [Bolo de Chocolate](/produtos/5).`
         });
 
         // 3. Inicia o Chat
