@@ -32,6 +32,32 @@ export async function register(req, res) {
     }
   })
 
+  // =======================================================================
+  // CRIANDO NOTIFICAÇÃO PARA O ADMIN
+  // =======================================================================
+  try {
+    // Busca o primeiro usuário que seja admin para receber a notificação.
+    // Caso não encontre pela role, enviará para o ID 1 por padrão.
+    const admin = await prisma.usuario.findFirst({
+      where: { role: 'admin' }
+    });
+    
+    const adminId = admin ? admin.id_usuario : 1;
+
+    await prisma.notificacoes.create({
+      data: {
+        id_usuario: adminId, 
+        titulo: "Novo Cadastro!",
+        mensagem: `Novo cadastro! ${user.nome} criou uma conta.`,
+        tipo: "usuario",
+        lido: false
+      }
+    });
+  } catch (erroNotificacao) {
+    console.error("Erro ao criar notificação de cadastro:", erroNotificacao);
+  }
+  // =======================================================================
+
   const token = jwt.sign(
     { id: user.id_usuario, email: user.email, role: user.role },
     process.env.JWT_SECRET,
@@ -116,12 +142,9 @@ export async function login(req, res) {
   })
 
   if (admin) {
-    // CORRIGIDO: era comparação direta sem bcrypt (falha de segurança grave)
-    // Agora tenta bcrypt primeiro, com fallback para senha em texto puro
     let match = false;
 
     try {
-      // Tenta comparar como hash (para admins que já tiveram senha migrada)
       match = await bcrypt.compare(senha, admin.senha);
     } catch (err) {
       match = false;
@@ -130,7 +153,6 @@ export async function login(req, res) {
     // Fallback: se a senha ainda está em texto puro no banco do admin
     if (!match && admin.senha === senha) {
       match = true;
-      // Migração silenciosa: hasheia a senha do admin também
       const hashedSenha = await bcrypt.hash(senha, 10);
       await prisma.administradores.update({
         where: { id_admin: admin.id_admin },
