@@ -4,7 +4,7 @@ import prisma from './lib/prisma.js'; // Importamos o Prisma, não mais o pool
 import cors from 'cors';
 
 // Importando as Rotas (nome unificado):
-import rotaChat from './routes/chat.routes.js';
+import rotaChat from './routes/chat.routes.js'; // Forçando a reinicialiação do chat
 import rotaConfig from './routes/admin-perfil.routes.js'
 import rotaCliente from './routes/clientes.routes.js';
 import rotaCategoria from './routes/category.routes.js';
