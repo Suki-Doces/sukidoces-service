@@ -17,9 +17,34 @@ import rotaCarrinho from './routes/cart.routes.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { authMiddleware } from './middleware/authMiddleware.js';
 
+// =======================================================================
+// 1. PRIMEIRO CRIAMOS O APP
+// =======================================================================
 const app = express();
-app.use(cors());
 const PORT = process.env.PORT || 3000;
+
+// =======================================================================
+// 2. AGORA SIM, CONFIGURAMOS O CORS USANDO O APP
+// =======================================================================
+const origensPermitidas = [
+  'http://localhost:4200',        // Angular no seu PC (Desenvolvimento)
+  'http://localhost:3000',        // Caso rode algum teste local
+  'https://sukidoces.vercel.app'  // Seu site real na Vercel (Produção)
+];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin || origensPermitidas.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Acesso bloqueado pela política de CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+// =======================================================================
 
 // Middleware para aceitar JSON
 app.use(express.json());
@@ -31,7 +56,6 @@ app.get('/', (req, res) => {
 
 // Middleware para liberar o acesso público à pasta de imagens
 app.use('/imagens', express.static('uploads'));
-
 
 // Conectando as rotas da Suki Doces
 // --- ROTAS PÚBLICAS (Loja) ---
