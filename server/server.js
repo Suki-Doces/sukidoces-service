@@ -17,7 +17,15 @@ import rotaCarrinho from './routes/cart.routes.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { authMiddleware } from './middleware/authMiddleware.js';
 
-// Aqui definimos a "Lista VIP" de URLs que podem acessar nossa API
+// =======================================================================
+// 1. PRIMEIRO CRIAMOS O APP
+// =======================================================================
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// =======================================================================
+// 2. AGORA SIM, CONFIGURAMOS O CORS USANDO O APP
+// =======================================================================
 const origensPermitidas = [
   'http://localhost:4200',        // Angular no seu PC (Desenvolvimento)
   'http://localhost:3000',        // Caso rode algum teste local
@@ -26,23 +34,19 @@ const origensPermitidas = [
 
 app.use(cors({
   origin: function (origin, callback) {
-    // Permite requisições sem 'origin' (ex: Postman) ou se a origem estiver na nossa lista VIP
     if (!origin || origensPermitidas.includes(origin)) {
       callback(null, true);
     } else {
       callback(new Error('Acesso bloqueado pela política de CORS'));
     }
   },
-  credentials: true, // Necessário se a sua API usa cookies ou tokens JWT de autenticação
-  methods: ['GET', 'POST', 'PUT', 'DELETE'], // O que o frontend pode fazer
-  allowedHeaders: ['Content-Type', 'Authorization'] // Cabeçalhos permitidos
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 // =======================================================================
-const PORT = process.env.PORT || 3000;
-
 
 // Middleware para aceitar JSON
-const app = express();
 app.use(express.json());
 app.use(logger); // ← adicione essa linha
 
@@ -52,7 +56,6 @@ app.get('/', (req, res) => {
 
 // Middleware para liberar o acesso público à pasta de imagens
 app.use('/imagens', express.static('uploads'));
-
 
 // Conectando as rotas da Suki Doces
 // --- ROTAS PÚBLICAS (Loja) ---
