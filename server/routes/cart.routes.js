@@ -14,7 +14,7 @@ router.get('/', authMiddleware, async (req, res, next) => {
       where: { usuario_id: idUsuario },
       orderBy: { data_adicionado: 'desc' },
       include: {
-        produto: true // Retorna o objeto produto completo
+        produto: true
       }
     });
 

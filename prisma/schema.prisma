@@ -135,14 +135,14 @@ model produtos {
 model carrinho_itens {
   id              Int      @id @default(autoincrement())
   usuario_id      Int
-  produto_id      Int
+  id_produto      Int
   quantidade      Int
   data_adicionado DateTime @default(now()) @db.Timestamp(0)
   usuario         usuario  @relation(fields: [usuario_id], references: [id_usuario], onDelete: Cascade)
-  produto         produtos @relation(fields: [produto_id], references: [id_produto], onDelete: Cascade)
+  produto         produtos @relation(fields: [id_produto], references: [id_produto], onDelete: Cascade)
 
   @@index([usuario_id])
-  @@index([produto_id])
+  @@index([id_produto])
 }
 
 // ADICIONADO: model notificacoes que estava sendo usado em admin.routes.js
