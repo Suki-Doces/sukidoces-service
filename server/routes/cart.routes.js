@@ -39,14 +39,15 @@ router.get('/', authMiddleware, async (req, res, next) => {
 router.post('/add', authMiddleware, async (req, res, next) => {
   try {
     const idUsuario = req.usuario.id_usuario;
-    const { produto_id, quantidade } = req.body;
+    // 1. Agora recebemos id_produto do frontend
+    const { id_produto, quantidade } = req.body;
 
-    if (!produto_id || !quantidade || quantidade < 1) {
+    if (!id_produto || !quantidade || quantidade < 1) {
       throw new AppError('Produto ou quantidade inválida', 400);
     }
 
     const product = await prisma.produtos.findUnique({
-      where: { id_produto: Number(produto_id) }
+      where: { id_produto: Number(id_produto) }
     });
 
     if (!product) {
@@ -54,7 +55,7 @@ router.post('/add', authMiddleware, async (req, res, next) => {
     }
 
     const estoqueProduto = await prisma.estoque.findFirst({
-        where: { id_produto: Number(produto_id) }
+      where: { id_produto: Number(id_produto) }
     });
 
     const qtdEstoque = estoqueProduto ? estoqueProduto.quantidade_atual : 0;
@@ -64,12 +65,13 @@ router.post('/add', authMiddleware, async (req, res, next) => {
     }
 
     const existingItem = await prisma.carrinho_itens.findFirst({
-      where: { usuario_id: idUsuario, produto_id: Number(produto_id) }
+      // 2. A busca no carrinho agora usa id_produto
+      where: { usuario_id: idUsuario, id_produto: Number(id_produto) }
     });
 
     if (existingItem) {
       const newQuantity = existingItem.quantidade + Number(quantidade);
-      
+
       if (qtdEstoque < newQuantity) {
         throw new AppError('Estoque insuficiente para a quantidade total', 400);
       }
@@ -82,7 +84,7 @@ router.post('/add', authMiddleware, async (req, res, next) => {
       await prisma.carrinho_itens.create({
         data: {
           usuario_id: idUsuario,
-          produto_id: Number(produto_id),
+          id_produto: Number(id_produto), // 3. A criação no carrinho usa id_produto
           quantidade: Number(quantidade)
         }
       });
@@ -114,7 +116,7 @@ router.put('/:itemId', authMiddleware, async (req, res, next) => {
     }
 
     const estoqueProduto = await prisma.estoque.findFirst({
-        where: { id_produto: cartItem.produto_id }
+      where: { id_produto: cartItem.id_produto }
     });
 
     const qtdEstoque = estoqueProduto ? estoqueProduto.quantidade_atual : 0;
