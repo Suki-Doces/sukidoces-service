@@ -8,15 +8,13 @@ const router = express.Router();
 // GET CART ITEMS
 router.get('/', authMiddleware, async (req, res, next) => {
   try {
-    const idUsuario = req.usuario.id_usuario; // Ajustado para pegar o ID correto do seu middleware
+    const idUsuario = req.usuario.id_usuario;
 
     const cartItems = await prisma.carrinho_itens.findMany({
       where: { usuario_id: idUsuario },
       orderBy: { data_adicionado: 'desc' },
       include: {
-        produto: {
-          select: { nome: true, preco: true, imagem: true }
-        }
+        produto: true // Retorna o objeto produto completo
       }
     });
 
