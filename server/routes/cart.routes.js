@@ -8,7 +8,8 @@ const router = express.Router();
 // GET /carrinho — busca itens do carrinho do usuário logado
 router.get('/', authMiddleware, async (req, res, next) => {
   try {
-    const idUsuario = req.usuario.id;
+    // 🛡️ Segurança: Pega o ID independente de como o token enviou
+    const idUsuario = req.usuario.id_usuario || req.usuario.id;
 
     const cartItems = await prisma.carrinho_itens.findMany({
       where: { usuario_id: idUsuario },
@@ -26,7 +27,8 @@ router.get('/', authMiddleware, async (req, res, next) => {
     }));
 
     const subtotal = itemsComTotal.reduce((sum, item) => sum + item.total, 0);
-    // REGRA DE NEGÓCIO: frete grátis acima de R$50
+    
+    // 🚚 REGRA DE NEGÓCIO: Frete grátis acima de R$50
     const frete = subtotal >= 50 ? 0 : 8.90;
     const total = subtotal + frete;
 
@@ -46,27 +48,27 @@ router.get('/', authMiddleware, async (req, res, next) => {
 // POST /carrinho/add — adiciona produto ao carrinho
 router.post('/add', authMiddleware, async (req, res, next) => {
   try {
-    const idUsuario = req.usuario.id;
-    const { produto_id, quantidade } = req.body;
+    const idUsuario = req.usuario.id_usuario || req.usuario.id;
+    // 🛡️ Segurança: Aceita tanto id_produto quanto produto_id do Frontend
+    const id_produto = req.body.id_produto || req.body.produto_id; 
+    const quantidade = req.body.quantidade;
 
-    if (!produto_id || !quantidade || quantidade < 1) {
+    if (!id_produto || !quantidade || quantidade < 1) {
       throw new AppError('Produto ou quantidade inválida', 400);
     }
 
     const product = await prisma.produtos.findUnique({
-      where: { id_produto: Number(produto_id) }
+      where: { id_produto: Number(id_produto) }
     });
 
     if (!product) throw new AppError('Produto não encontrado', 404);
 
-    // REGRA DE NEGÓCIO: produto sem estoque não pode ser adicionado
-    if ((product.quantidade ?? 0) < quantidade) {
+    if ((product.quantidade ?? 0) < Number(quantidade)) {
       throw new AppError('Estoque insuficiente', 400);
     }
 
-    // CORRIGIDO: schema usa 'id_produto', não 'produto_id'
     const existingItem = await prisma.carrinho_itens.findFirst({
-      where: { usuario_id: idUsuario, id_produto: Number(produto_id) }
+      where: { usuario_id: idUsuario, id_produto: Number(id_produto) }
     });
 
     if (existingItem) {
@@ -81,11 +83,10 @@ router.post('/add', authMiddleware, async (req, res, next) => {
         data: { quantidade: newQuantity }
       });
     } else {
-      // CORRIGIDO: schema usa 'id_produto', não 'produto_id'
       await prisma.carrinho_itens.create({
         data: {
           usuario_id: idUsuario,
-          id_produto: Number(produto_id),
+          id_produto: Number(id_produto),
           quantidade: Number(quantidade)
         }
       });
@@ -100,7 +101,7 @@ router.post('/add', authMiddleware, async (req, res, next) => {
 // PUT /carrinho/:itemId — atualiza quantidade de um item
 router.put('/:itemId', authMiddleware, async (req, res, next) => {
   try {
-    const idUsuario = req.usuario.id;
+    const idUsuario = req.usuario.id_usuario || req.usuario.id;
     const { itemId } = req.params;
     const { quantidade } = req.body;
 
@@ -109,19 +110,16 @@ router.put('/:itemId', authMiddleware, async (req, res, next) => {
     }
 
     const cartItem = await prisma.carrinho_itens.findUnique({
-      where: { id: Number(itemId) }
+      where: { id: Number(itemId) },
+      include: { produto: true } // ✅ CORREÇÃO: Necessário para acessar o estoque do produto abaixo!
     });
 
     if (!cartItem || cartItem.usuario_id !== idUsuario) {
       throw new AppError('Não autorizado ou item não encontrado', 403);
     }
 
-    // CORRIGIDO: schema usa 'id_produto', não 'produto_id'
-    const produto = await prisma.produtos.findUnique({
-      where: { id_produto: cartItem.id_produto }
-    });
-
-    if ((produto?.quantidade ?? 0) < quantidade) {
+    // Verifica o estoque antes de atualizar
+    if ((cartItem.produto?.quantidade ?? 0) < Number(quantidade)) {
       throw new AppError('Estoque insuficiente', 400);
     }
 
@@ -139,7 +137,7 @@ router.put('/:itemId', authMiddleware, async (req, res, next) => {
 // DELETE /carrinho/:itemId — remove item do carrinho
 router.delete('/:itemId', authMiddleware, async (req, res, next) => {
   try {
-    const idUsuario = req.usuario.id;
+    const idUsuario = req.usuario.id_usuario || req.usuario.id;
     const { itemId } = req.params;
 
     const cartItem = await prisma.carrinho_itens.findUnique({
@@ -160,7 +158,7 @@ router.delete('/:itemId', authMiddleware, async (req, res, next) => {
 // DELETE /carrinho — limpa todo o carrinho
 router.delete('/', authMiddleware, async (req, res, next) => {
   try {
-    const idUsuario = req.usuario.id;
+    const idUsuario = req.usuario.id_usuario || req.usuario.id;
     await prisma.carrinho_itens.deleteMany({ where: { usuario_id: idUsuario } });
     res.json({ message: 'Carrinho esvaziado com sucesso' });
   } catch (error) {
