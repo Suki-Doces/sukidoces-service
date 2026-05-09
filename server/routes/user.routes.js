@@ -36,9 +36,11 @@ router.get('/perfil', authMiddleware, async (req, res, next) => {
         nome: true,
         email: true,
         telefone: true,
+        cpf: true,
         role: true,
         data_criacao: true,
-        status_id: true
+        status_id: true,
+        enderecos: true,
       }
     });
 
