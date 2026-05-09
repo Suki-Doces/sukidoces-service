@@ -14,7 +14,7 @@ export async function register(req, res) {
   if (!senha || typeof senha !== 'string' || senha.length < 6) {
     return res.status(400).json({ message: 'senha é obrigatória e deve ter pelo menos 6 caracteres' })
   }
-  if (!telefone || typeof telefone !== 'string' || telefone.length < 9) {
+  if (!telefone || typeof telefone !== 'string' || telefone.length < 11) {
     return res.status(400).json({message: 'telefone é obrigatório e deve ter pelo menos 9 caracteres'})
   }
 
