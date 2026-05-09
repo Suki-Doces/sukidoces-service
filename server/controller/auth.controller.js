@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken'
 import { prisma } from '../lib/prisma.js'
 
 export async function register(req, res) {
-  const { nome, email, senha } = req.body
+  const { nome, email, senha, telefone } = req.body
 
   if (!nome || typeof nome !== 'string' || nome.trim().length < 2) {
     return res.status(400).json({ message: 'nome é obrigatório e deve ter pelo menos 2 caracteres' })
@@ -13,6 +13,9 @@ export async function register(req, res) {
   }
   if (!senha || typeof senha !== 'string' || senha.length < 6) {
     return res.status(400).json({ message: 'senha é obrigatória e deve ter pelo menos 6 caracteres' })
+  }
+  if (!telefone || typeof telefone !== 'string' || telefone.length < 9) {
+    return res.status(400).json({message: 'telefone é obrigatório e deve ter pelo menos 9 caracteres'})
   }
 
   const existing = await prisma.usuario.findUnique({
@@ -28,7 +31,8 @@ export async function register(req, res) {
     data: {
       nome: nome.trim(),
       email: email.trim().toLowerCase(),
-      senha: hashedSenha
+      senha: hashedSenha,
+      telefone
     }
   })
 

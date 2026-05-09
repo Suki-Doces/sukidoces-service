@@ -56,28 +56,36 @@ router.get('/perfil', authMiddleware, async (req, res, next) => {
 // user.service.ts chama: this.http.put(`${API_URL}/perfil`, profileData)
 router.put('/perfil', authMiddleware, async (req, res, next) => {
   try {
-    const id = req.usuario.id; // vem do token JWT, não da URL
-    const { nome, telefone } = req.body;
+    const id = req.usuario.id;
+    const { nome, telefone, cpf, cep, rua, numero, complemento, bairro, cidade, estado } = req.body;
 
-    const atualizado = await prisma.usuario.update({
+    // 1. Atualiza dados do Usuário (incluindo CPF)
+    const usuarioAtualizado = await prisma.usuario.update({
       where: { id_usuario: id },
       data: {
-        ...(nome && { nome: nome.trim() }),
-        ...(telefone !== undefined && { telefone })
-      },
-      select: {
-        id_usuario: true,
-        nome: true,
-        email: true,
-        telefone: true,
-        role: true
+        nome: nome?.trim(),
+        telefone,
+        cpf
       }
     });
 
-    return res.status(200).json({
-      message: 'Dados atualizados com sucesso!',
-      user: atualizado
+    // 2. Atualiza ou Cria o Endereço
+    const enderecoExistente = await prisma.enderecos.findFirst({
+      where: { id_usuario: id }
     });
+
+    if (enderecoExistente) {
+      await prisma.enderecos.update({
+        where: { id_endereco: enderecoExistente.id_endereco },
+        data: { cep, logradouro: rua, numero, complemento, bairro, cidade, estado }
+      });
+    } else {
+      await prisma.enderecos.create({
+        data: { id_usuario: id, cep, logradouro: rua, numero, complemento, bairro, cidade, estado }
+      });
+    }
+
+    return res.status(200).json({ message: 'Perfil e endereço atualizados!' });
   } catch (error) {
     next(error);
   }
