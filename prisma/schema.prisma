@@ -49,6 +49,7 @@ model usuario {
   enderecos       enderecos[]
   // ADICIONADO: relação com notificacoes
   notificacoes    notificacoes[]
+  contatoMensagens contatoMensagens[]
 }
 
 model enderecos {
@@ -158,6 +159,23 @@ model notificacoes {
   lido           Boolean  @default(false)
   data_criacao   DateTime @default(now()) @db.Timestamp(0)
   usuario        usuario  @relation(fields: [id_usuario], references: [id_usuario], onDelete: Cascade)
+
+  @@index([id_usuario])
+}
+
+model contatoMensagens {
+  id_contato      Int       @id @default(autoincrement())
+  id_usuario      Int?      
+  nome            String    @db.VarChar(100)
+  email           String    @db.VarChar(150)
+  telefone        String    @db.VarChar(50)
+  assunto         String    @db.VarChar(100)
+  mensagem        String    @db.Text
+  respondido      Boolean   @default(false)
+  resposta        String?   @db.Text
+  data_criacao    DateTime  @default(now()) @db.Timestamp(0)
+  data_resposta   DateTime? @db.Timestamp(0)
+  usuario         usuario?  @relation(fields: [id_usuario], references: [id_usuario], onDelete: Cascade)
 
   @@index([id_usuario])
 }

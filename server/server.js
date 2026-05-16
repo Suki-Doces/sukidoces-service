@@ -13,8 +13,7 @@ import rotaProdutos from './routes/produtos.routes.js';
 import rotaPedidos from './routes/orders.routes.js';
 import rotaNotificacoes from './routes/notification.routes.js';
 import rotaAdmin from './routes/admin.routes.js';
-import rotaCarrinho from './routes/cart.routes.js';
-import { errorHandler } from './middleware/errorHandler.js';
+import rotaCarrinho from './routes/cart.routes.js';import rotaContato, { adminContatoRouter } from './routes/contato.routes.js';import { errorHandler } from './middleware/errorHandler.js';
 import { authMiddleware } from './middleware/authMiddleware.js';
 
 // =======================================================================
@@ -64,6 +63,7 @@ app.use('/suki-doces/usuario', rotaUsuario); // <-- Sem essa linha, não loga/ca
 app.use('/suki-doces/produtos', rotaProdutos); 
 app.use('/suki-doces/carrinho', rotaCarrinho);
 app.use('/suki-doces/chat', rotaChat);
+app.use('/suki-doces/contatos', rotaContato);
 
 // Expor o router de pedidos também em rota pública (/suki-doces/pedidos)
 // Isso permite que o checkout do cliente (POST /pedidos) funcione sem usar
@@ -78,6 +78,7 @@ app.use('/suki-doces/admin/categorias', rotaCategoria);
 app.use('/suki-doces/admin/clientes', rotaCliente); // <-- Mudamos aqui!
 app.use('/suki-doces/admin/pedidos', rotaPedidos);
 app.use('/suki-doces/admin/notificacoes', rotaNotificacoes);
+app.use('/suki-doces/admin/contatos', adminContatoRouter);
 app.use('/suki-doces/admin/configuracoes', rotaConfig);
 app.use(errorHandler);
 
