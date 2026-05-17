@@ -24,14 +24,14 @@ router.post('/logout', authMiddleware, (req, res) => {
 router.get('/perfil', authMiddleware, async (req, res, next) => {
   try {
     const usuario = await prisma.usuario.findUnique({
-      where: { id_usuario: req.usuario.id_usuario },
+      where: { id_usuario: req.usuario.id },
       select: {
         id_usuario: true,
         nome: true,
         email: true,
         telefone: true,
         cpf: true,
-        endereco: true,
+        enderecos: true,
         data_nascimento: true,
         role: true,
         data_criacao: true,
@@ -46,15 +46,15 @@ router.get('/perfil', authMiddleware, async (req, res, next) => {
 // PUT /usuario/perfil
 router.put('/perfil', authMiddleware, async (req, res, next) => {
   try {
-    const { nome, telefone } = req.body;
+    const { nome, telefone, cpf, enderecos, data_nascimento } = req.body;
     const atualizado = await prisma.usuario.update({
       where: { id_usuario: req.usuario.id },
       data: {
         ...(nome && { nome: nome.trim() }),
         ...(telefone !== undefined && { telefone }),
         ...(cpf !== undefined && { cpf }),
-        ...(endereco !== undefined && { endereco }),
-        ...(dataNascimento !== undefined && {
+        ...(enderecos !== undefined && { enderecos: { create: [enderecos] } }),
+        ...(data_nascimento !== undefined && {
           data_nascimento: data_nascimento ? new Date(data_nascimento) : null
         })
       },
@@ -64,7 +64,7 @@ router.put('/perfil', authMiddleware, async (req, res, next) => {
         email: true,
         telefone: true,
         cpf: true,
-        endereco: true,
+        enderecos: true,
         data_nascimento: true,
         role: true
       }
