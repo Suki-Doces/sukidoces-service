@@ -24,7 +24,7 @@ router.post('/logout', authMiddleware, (req, res) => {
 router.get('/perfil', authMiddleware, async (req, res, next) => {
   try {
     const usuario = await prisma.usuario.findUnique({
-      where: { id_usuario: req.usuario.id },
+      where: { id_usuario: req.usuario.id_usuario },
       select: {
         id_usuario: true,
         nome: true,
