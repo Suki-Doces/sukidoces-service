@@ -53,7 +53,7 @@ router.put('/perfil', authMiddleware, async (req, res, next) => {
         ...(nome && { nome: nome.trim() }),
         ...(telefone !== undefined && { telefone }),
         ...(cpf !== undefined && { cpf }),
-        ...(enderecos !== undefined && { enderecos: { create: [enderecos] } }),
+        ...(enderecos !== undefined && { enderecos: JSON.parse(req.body.enderecos) }),
         ...(data_nascimento !== undefined && {
           data_nascimento: data_nascimento ? new Date(data_nascimento) : null
         })
