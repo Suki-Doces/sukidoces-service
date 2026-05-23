@@ -53,9 +53,6 @@ app.get('/', (req, res) => {
   res.send('Bem-vindo à API da Suki Doces! Sistema operando 100% na nuvem.');
 });
 
-// Middleware para liberar o acesso público à pasta de imagens
-app.use('/imagens', express.static('uploads'));
-
 // Conectando as rotas da Suki Doces
 // --- ROTAS PÚBLICAS (Loja) ---
 // A loja precisa ver os produtos e gerenciar o carrinho

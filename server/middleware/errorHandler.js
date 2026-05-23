@@ -10,6 +10,14 @@ export const errorHandler = (err, req, res, next) => {
     return res.status(401).json({ error: 'Token expired' });
   }
 
+  if (err.name === 'MulterError') {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ error: 'Imagem muito grande. O tamanho máximo é 5MB.' });
+    }
+
+    return res.status(400).json({ error: err.message });
+  }
+
   // Database errors
   if (err.code === 'ER_DUP_ENTRY') {
     return res.status(409).json({ error: 'Duplicate entry' });

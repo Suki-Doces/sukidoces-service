@@ -1,26 +1,23 @@
 import multer from 'multer';
-import { v2 as cloudinary } from 'cloudinary';
-import { CloudinaryStorage } from 'multer-storage-cloudinary';
-import dotenv from 'dotenv';
+import { AppError } from './errorHandler.js';
 
-dotenv.config();
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
-// 1. Configurar o Cloudinary com as tuas chaves
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET
-});
+const storage = multer.memoryStorage();
 
-// 2. Configurar o destino (Storage)
-const storage = new CloudinaryStorage({
-  cloudinary: cloudinary,
-  params: {
-    folder: 'suki-doces-produtos', // Cria uma pasta com este nome lá no Cloudinary
-    allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'avif'],
-    // transformation: [{ width: 800, height: 800, crop: 'limit' }] // Opcional: redimensiona imagens gigantes automaticamente
+const fileFilter = (req, file, cb) => {
+  if (ALLOWED_IMAGE_TYPES.includes(file.mimetype)) {
+    return cb(null, true);
+  }
+
+  return cb(new AppError('Formato de imagem invalido. Use JPG, JPEG, PNG ou WEBP.', 400));
+};
+
+export const upload = multer({
+  storage,
+  fileFilter,
+  limits: {
+    fileSize: MAX_FILE_SIZE
   }
 });
-
-// 3. Exportar o upload
-export const upload = multer({ storage: storage });

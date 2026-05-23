@@ -2,6 +2,7 @@ import express from 'express';
 import prisma from '../lib/prisma.js';
 import { upload } from '../middleware/uploadMiddleware.js';
 import { authMiddleware, adminOnly } from '../middleware/authMiddleware.js';
+import { uploadProductImage } from '../services/cloudinaryUpload.service.js';
 
 const router = express.Router();
 
@@ -117,11 +118,10 @@ router.get('/:id', async (req, res, next) => {
 router.post('/', authMiddleware, adminOnly, upload.single('imagem'), async (req, res, next) => {
   try {
     const { nome, descricao, preco, quantidade, id_categoria } = req.body;
-    
-    // Cloudinary path
-    const urlDaImagem = req.file ? req.file.path : null;
 
     if (!nome || !preco) return res.status(400).json({ mensagem: 'Nome e Preço são obrigatórios' });
+
+    const urlDaImagem = req.file ? await uploadProductImage(req.file.buffer) : null;
 
     const novoProduto = await prisma.produtos.create({
       data: {
@@ -145,21 +145,22 @@ router.put('/:id', authMiddleware, adminOnly, upload.single('imagem'), async (re
   try {
     const id = parseInt(req.params.id);
     const { nome, descricao, preco, quantidade, id_categoria } = req.body;
+
+    if (isNaN(id)) return res.status(400).json({ mensagem: 'ID inválido' });
     
     const produto = await prisma.produtos.findUnique({ where: { id_produto: id } });
     if (!produto) return res.status(404).json({ mensagem: 'Produto não encontrado' });
 
-    // Cloudinary path
-    const novaImagemUrl = req.file ? req.file.path : undefined;
+    const novaImagemUrl = req.file ? await uploadProductImage(req.file.buffer) : undefined;
 
     const atualizado = await prisma.produtos.update({
       where: { id_produto: id },
       data: {
         ...(nome && { nome }),
         ...(descricao !== undefined && { descricao }),
-        ...(preco && { preco: parseFloat(preco) }),
+        ...(preco !== undefined && { preco: parseFloat(preco) }),
         ...(quantidade !== undefined && { quantidade: parseInt(quantidade, 10) }),
-        ...(id_categoria && { id_categoria: parseInt(id_categoria, 10) }),
+        ...(id_categoria !== undefined && { id_categoria: parseInt(id_categoria, 10) }),
         ...(novaImagemUrl && { imagem: novaImagemUrl }) 
       }
     });
