@@ -53,7 +53,9 @@ router.put('/perfil', authMiddleware, async (req, res, next) => {
         ...(nome && { nome: nome.trim() }),
         ...(telefone !== undefined && { telefone }),
         ...(cpf !== undefined && { cpf }),
-        ...(enderecos !== undefined && { enderecos: typeof enderecos === 'string' ? JSON.parse(enderecos) : enderecos }),
+        ...(enderecos !== undefined && {
+          enderecos: enderecos // O Express/Body-parser já converte o JSON automaticamente
+        }),
         ...(data_nascimento !== undefined && {
           data_nascimento: data_nascimento ? new Date(data_nascimento) : null
         })
