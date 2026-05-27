@@ -1,60 +1,54 @@
-# Suki Doces — API REST
+# 🍰 Suki Doces — API REST
 
-Bem-vindo ao repositório do Back-End da **Suki Doces**, uma loja online familiar. Esta API RESTful foi desenvolvida para gerenciar todo o fluxo do e-commerce, desde o catálogo de produtos até o processamento de pedidos e o painel administrativo.
+![Node.js](https://img.shields.io/badge/Node.js-43853D?style=for-the-badge&logo=node.js&logoColor=white)
+![Express.js](https://img.shields.io/badge/Express.js-404D59?style=for-the-badge)
+![Prisma](https://img.shields.io/badge/Prisma-3982CE?style=for-the-badge&logo=Prisma&logoColor=white)
+![MySQL](https://img.shields.io/badge/MySQL-005C84?style=for-the-badge&logo=mysql&logoColor=white)
+![Gemini AI](https://img.shields.io/badge/Gemini_AI-8E75B2?style=for-the-badge&logo=google&logoColor=white)
 
-O sistema está publicado e operando em nuvem na Render, conectado a um banco de dados hospedado na Aiven.io.
+Bem-vindo ao repositório do Back-End da **Suki Doces**! Esta API RESTful foi desenvolvida para gerenciar todo o fluxo do nosso e-commerce familiar, proporcionando uma experiência robusta desde a exibição do catálogo até o processamento de pagamentos e painel administrativo.
 
----
-
-### Tecnologias Utilizadas
-
-* **Node.js & Express.js:** Base da aplicação e roteamento.
-* **Prisma ORM:** Mapeamento objeto-relacional e tipagem segura.
-* **MySQL (Aiven):** Banco de dados relacional em nuvem.
-* **JWT (JSON Web Token):** Autenticação e autorização seguras.
-* **Bcrypt:** Criptografia de senhas no banco de dados.
-* **Render:** Hospedagem do Web Service com CI/CD integrado.
+O sistema está publicado e operando na nuvem através da **Render**, com banco de dados hospedado na **Aiven.io**.
 
 ---
 
-### Funcionalidades
+## 🚀 Funcionalidades Principais
 
-**Usuários & Segurança**
-* Autenticação e autorização baseada em tokens JWT.
-* Criptografia de senhas nativa com Bcrypt.
-* Controle de acesso por níveis de permissão (Cliente vs. Admin).
+Além do fluxo tradicional de e-commerce, a API foi construída com recursos avançados:
 
-**Catálogo & Loja**
-* CRUD completo de Produtos (com suporte a upload de imagens).
-* Gestão de Categorias e controle de estoque em tempo real.
-* Carrinho de Compras inteligente (adicionar, atualizar e remover itens).
-* Processamento de Pedidos e Checkout.
-
-**Administração**
-* Painel Administrativo para controle de vendas e usuários.
-* Sistema interno de Notificações para alertas de novos pedidos.
-* Tratamento de erros centralizado com registro de logs.
+* **Autenticação e Segurança:** Login unificado para clientes e administradores utilizando JWT e senhas criptografadas nativamente com Bcrypt.
+* **Assistente Virtual com IA:** Integração direta com o modelo **Google Gemini** (SukiBot) para um chat interativo, que recomenda produtos mapeados com o catálogo.
+* **Upload em Nuvem:** Gerenciamento de mídia e imagens de produtos integrados com a API do **Cloudinary**.
+* **Checkout Inteligente:** Processamento de pedidos com validação de estoque em tempo real, regras de devolução/cancelamento e aplicação de cupons dinâmicos.
+* **Painel Administrativo:** Dashboard completo com métricas de vendas, controle de usuários e um sistema interno de notificações de novos pedidos ou cancelamentos.
+* **Carrinho de Compras:** Lógica de negócio embutida para cálculo de subtotais e regras de frete grátis.
 
 ---
 
-### Pré-requisitos
+## 🛠️ Tecnologias Utilizadas
 
-Antes de começar, você precisará ter as seguintes ferramentas instaladas na sua máquina:
-* **Node.js:** Versão 18 ou superior.
-* **Git:** Para clonar o repositório.
-* **MySQL:** Uma instância rodando localmente ou em nuvem.
-
----
-
-### Deploy em Produção
-A API está publicada e pode ser acessada através da URL base abaixo:
-URL Pública: https://suki-doces-api.onrender.com
+* **Linguagem & Framework:** Node.js (v18+) e Express.js.
+* **Banco de Dados:** MySQL (Hospedado na Aiven.io).
+* **ORM:** Prisma ORM, garantindo tipagem segura e facilitando as migrações estruturais.
+* **Serviços Externos:** Google Generative AI SDK (Gemini) e Cloudinary SDK.
 
 ---
 
-### Como rodar o projeto localmente
+## ⚙️ Configuração do Ambiente
 
-**1. Clone o repositório**
-```bash
-git clone [https://github.com/Suki-Doces/sukidoces-service.git](https://github.com/Suki-Doces/sukidoces-service.git)
-cd sukidoces-service
+Para rodar o projeto localmente, você precisará configurar suas variáveis de ambiente. Crie um arquivo `.env` na raiz do projeto seguindo o modelo abaixo:
+
+```env
+# Conexão com o Banco de Dados MySQL
+DATABASE_URL="mysql://usuario:senha@host:porta/database"
+
+# Chave secreta para assinatura dos tokens JWT
+JWT_SECRET="sua_chave_super_secreta"
+
+# Credenciais do Cloudinary (Upload de Imagens)
+CLOUDINARY_CLOUD_NAME="seu_cloud_name"
+CLOUDINARY_API_KEY="sua_api_key"
+CLOUDINARY_API_SECRET="seu_api_secret"
+
+# Credenciais do Google Gemini (Assistente IA)
+GEMINI_API_KEY="sua_chave_da_api_gemini"
