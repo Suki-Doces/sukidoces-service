@@ -1,4 +1,4 @@
-# 🍰 Suki Doces — API REST
+#  Suki Doces — API REST
 
 ![Node.js](https://img.shields.io/badge/Node.js-43853D?style=for-the-badge&logo=node.js&logoColor=white)
 ![Express.js](https://img.shields.io/badge/Express.js-404D59?style=for-the-badge)
@@ -12,7 +12,7 @@ O sistema está publicado e operando na nuvem através da **Render**, com banco 
 
 ---
 
-## 🚀 Funcionalidades Principais
+##  Funcionalidades Principais
 
 Além do fluxo tradicional de e-commerce, a API foi construída com recursos avançados:
 
@@ -34,7 +34,7 @@ Além do fluxo tradicional de e-commerce, a API foi construída com recursos ava
 
 ---
 
-## ⚙️ Configuração do Ambiente
+##  Configuração do Ambiente
 
 Para rodar o projeto localmente, você precisará configurar suas variáveis de ambiente. Crie um arquivo `.env` na raiz do projeto seguindo o modelo abaixo:
 
