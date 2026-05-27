@@ -25,7 +25,7 @@ Além do fluxo tradicional de e-commerce, a API foi construída com recursos ava
 
 ---
 
-## 🛠️ Tecnologias Utilizadas
+##  Tecnologias Utilizadas
 
 * **Linguagem & Framework:** Node.js (v18+) e Express.js.
 * **Banco de Dados:** MySQL (Hospedado na Aiven.io).
@@ -52,3 +52,28 @@ CLOUDINARY_API_SECRET="seu_api_secret"
 
 # Credenciais do Google Gemini (Assistente IA)
 GEMINI_API_KEY="sua_chave_da_api_gemini"
+
+```
+
+---
+
+##  Como Executar
+
+* **Clone o repositório**
+  ```
+  git clone [https://github.com/Suki-Doces/sukidoces-service.git](https://github.com/Suki-Doces/sukidoces-service.git)
+  ```
+* **Instale as dependências**
+  ```
+  npm install
+  ```
+* **Configure o Banco de Dados**
+  ```
+  npx prisma generate
+  npx prisma db push
+  ```
+* **Inicie o servidor**
+  ```
+  npm run dev
+  npm start
+  ```
