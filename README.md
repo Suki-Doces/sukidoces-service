@@ -77,3 +77,23 @@ GEMINI_API_KEY="sua_chave_da_api_gemini"
   npm run dev
   npm start
   ```
+---
+
+## Estrutura de Rotas (Endpoints)
+
+A arquitetura de rotas foi separada para garantir a segurança entre a área do cliente e o painel administrativo.
+
+### Rotas da Loja (`/suki-doces`)
+
+* **`/usuario`** - Autenticação (Login/Registro) e gerenciamento de perfil.
+* **`/produtos`** - Visualização do catálogo, busca avançada e filtros.
+* **`/carrinho`** - Adição, edição e remoção de itens do carrinho.
+* **`/pedidos`** - Checkout e histórico de compras do usuário.
+* **`/chat`** - Interação via IA para suporte de vendas.
+
+###  Rotas da Administração (`/suki-doces/admin`)
+
+* **`/dashboard`** - Consulta de métricas financeiras e resumos.
+* **`/pedidos`** - Gestão de status de entregas.
+* **`/produtos`** e **`/categorias`** - CRUD completo para abastecimento da loja.
+* **`/clientes`** - Listagem e gerenciamento de permissões.
