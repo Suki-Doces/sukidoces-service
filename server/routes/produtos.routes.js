@@ -59,11 +59,16 @@ router.get('/novos', async (req, res, next) => {
     const seteDiasAtras = new Date();
     seteDiasAtras.setDate(seteDiasAtras.getDate() - 7);
 
-    const novosProdutos = await prisma.produto.findMany({
+    // CORREÇÃO 1: "prisma.produtos" em vez de "prisma.produto"
+    const novosProdutos = await prisma.produtos.findMany({
       where: {
         data_criacao: {
-          gte: seteDiasAtras // "gte" = greater than or equal (maior ou igual a 7 dias atrás)
+          gte: seteDiasAtras // Maior ou igual a 7 dias atrás
         }
+      },
+      // CORREÇÃO 2: Incluir a categoria para o front-end mostrar no card
+      include: {
+        categorias: true
       },
       orderBy: {
         data_criacao: 'desc'
@@ -73,6 +78,7 @@ router.get('/novos', async (req, res, next) => {
 
     res.status(200).json(novosProdutos);
   } catch (error) {
+    console.error(error); // Ajuda a ver o erro no terminal do backend
     res.status(500).json({ error: 'Erro ao buscar lançamentos' });
   }
 });
