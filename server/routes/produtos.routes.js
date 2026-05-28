@@ -55,14 +55,25 @@ router.get('/mais-vendidos', async (req, res, next) => {
 // Produtos novos
 router.get('/novos', async (req, res, next) => {
   try {
-    const produtos = await prisma.produtos.findMany({
-      take: 8,
-      orderBy: { data_criacao: 'desc' },
-      include: { categorias: true }
+    // Calcula a data de 7 dias atrás
+    const seteDiasAtras = new Date();
+    seteDiasAtras.setDate(seteDiasAtras.getDate() - 7);
+
+    const novosProdutos = await prisma.produto.findMany({
+      where: {
+        data_criacao: {
+          gte: seteDiasAtras // "gte" = greater than or equal (maior ou igual a 7 dias atrás)
+        }
+      },
+      orderBy: {
+        data_criacao: 'desc'
+      },
+      take: 20 // Limite de produtos para não pesar
     });
-    return res.json(produtos);
+
+    res.status(200).json(novosProdutos);
   } catch (error) {
-    next(error);
+    res.status(500).json({ error: 'Erro ao buscar lançamentos' });
   }
 });
 
@@ -71,10 +82,10 @@ router.get('/', async (req, res, next) => {
   try {
     const { categoria, query, filtro, minPreco, maxPreco } = req.query;
     let prismaWhere = {};
-    
+
     if (categoria) prismaWhere.id_categoria = parseInt(categoria, 10);
     if (query) prismaWhere.nome = { contains: query };
-    
+
     // FILTRO DE FAIXA DE PREÇO (Cumpre o README)
     if (minPreco || maxPreco) {
       prismaWhere.preco = {};
@@ -83,7 +94,7 @@ router.get('/', async (req, res, next) => {
     }
 
     let queryOptions = { where: prismaWhere, include: { categorias: true } };
-    
+
     if (filtro === 'novos') queryOptions.orderBy = { data_criacao: 'desc' };
     if (filtro === 'menor-preco') queryOptions.orderBy = { preco: 'asc' };
     if (filtro === 'maior-preco') queryOptions.orderBy = { preco: 'desc' };
@@ -125,12 +136,12 @@ router.post('/', authMiddleware, adminOnly, upload.single('imagem'), async (req,
 
     const novoProduto = await prisma.produtos.create({
       data: {
-        nome, 
+        nome,
         descricao,
         preco: parseFloat(preco),
         quantidade: quantidade ? parseInt(quantidade, 10) : 0,
         id_categoria: id_categoria ? parseInt(id_categoria, 10) : null,
-        imagem: urlDaImagem 
+        imagem: urlDaImagem
       }
     });
 
@@ -147,7 +158,7 @@ router.put('/:id', authMiddleware, adminOnly, upload.single('imagem'), async (re
     const { nome, descricao, preco, quantidade, id_categoria } = req.body;
 
     if (isNaN(id)) return res.status(400).json({ mensagem: 'ID inválido' });
-    
+
     const produto = await prisma.produtos.findUnique({ where: { id_produto: id } });
     if (!produto) return res.status(404).json({ mensagem: 'Produto não encontrado' });
 
@@ -161,7 +172,7 @@ router.put('/:id', authMiddleware, adminOnly, upload.single('imagem'), async (re
         ...(preco !== undefined && { preco: parseFloat(preco) }),
         ...(quantidade !== undefined && { quantidade: parseInt(quantidade, 10) }),
         ...(id_categoria !== undefined && { id_categoria: parseInt(id_categoria, 10) }),
-        ...(novaImagemUrl && { imagem: novaImagemUrl }) 
+        ...(novaImagemUrl && { imagem: novaImagemUrl })
       }
     });
 
