@@ -17,6 +17,15 @@ export const chatWithGemini = async (req, res) => {
       .map(p => `- ${p.nome} (ID: ${p.id_produto}, Preço: R$ ${p.preco})`)
       .join('\n');
 
+    // Procurar cupons de descontos no banco
+    const listaCupons = await prisma.cupons.findMany({
+      select: { id_cupom: true, codigo: true, tipo: true, valor: true, validade: true, ativo: true }
+    })
+
+    const cuponsString = listaCupons
+      .map(c => `- ${c.codigo} (ID: ${c.id_cupom}, Status: ${c.ativo}, Valor de desconto: ${c.valor} de ${c.tipo}), Validade: ${c.validade}`)
+
+
     // 2. Regra extrema para a IA
     const systemInstruction = `Você é o SukiBot, assistente de vendas da SukiDoces.
     
@@ -26,12 +35,18 @@ export const chatWithGemini = async (req, res) => {
     FORMATO OBRIGATÓRIO: [Nome do Produto](/produtos/ID)
     
     CATÁLOGO DE PRODUTOS DISPONÍVEIS:
-    ${catalogoString}`;
+    ${catalogoString}
+    
+    Responda qual cupom de desconto está disponível de acordo com a lista a seguir, os descontos podem variar caso for percentual ou valor fixo no total da compra.
+
+    LISTA DE CUPONS DE DESCONTO DISPONÍVEIS:
+    ${cuponsString}
+    `;
 
     // 3. Usa o flash (que aceita systemInstruction)
-    const model = genAI.getGenerativeModel({ 
+    const model = genAI.getGenerativeModel({
       model: "gemini-2.5-flash",
-      systemInstruction: systemInstruction 
+      systemInstruction: systemInstruction
     });
 
     const chat = model.startChat({
