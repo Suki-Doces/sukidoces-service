@@ -5,15 +5,24 @@ import { authMiddleware, adminOnly } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-// 1. LISTAR CLIENTES (GET)
+// 1. LISTAR CLIENTES COM PAGINAÇÃO (GET)
 router.get('/', authMiddleware, adminOnly, async (req, res) => {
   try {
+    // Extrai os parâmetros de paginação da query string (?page=1&limit=10)
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.max(1, parseInt(req.query.limit) || 10);
+    
+    // Calcula quantos registros pular
+    const skip = (page - 1) * limit;
+
     const clientes = await prisma.usuario.findMany({
       where: { role: 'cliente' },
       include: {
         pedidos: true
       },
-      orderBy: { data_criacao: 'desc' }
+      orderBy: { data_criacao: 'desc' },
+      take: limit,
+      skip: skip
     });
 
     const clientesFormatados = clientes.map(c => ({
@@ -27,7 +36,22 @@ router.get('/', authMiddleware, adminOnly, async (req, res) => {
       total_pedidos: c.pedidos.length
     }));
 
-    res.json(clientesFormatados);
+    // Conta o total de clientes
+    const total = await prisma.usuario.count({
+      where: { role: 'cliente' }
+    });
+
+    const totalPages = Math.ceil(total / limit);
+
+    res.json({
+      clientes: clientesFormatados,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages
+      }
+    });
   } catch (error) {
     console.error('ERRO NO GET CLIENTES:', error);
     res.status(500).json({ erro: 'Erro ao buscar clientes', detalhe: error.message });

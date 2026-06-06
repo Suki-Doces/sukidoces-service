@@ -4,19 +4,33 @@ import { authMiddleware } from '../middleware/authMiddleware.js'; // Ajuste o no
 
 const router = express.Router();
 
-// 1. BUSCAR NOTIFICAÇÕES (GET)
+// 1. BUSCAR NOTIFICAÇÕES COM PAGINAÇÃO (GET)
 router.get('/', authMiddleware, async (req, res) => {
     try {
-        // No Prisma, usamos o findMany com filtros
+        // Extrai os parâmetros de paginação da query string (?page=1&limit=4)
+        const page = Math.max(1, parseInt(req.query.page) || 1);
+        const limit = Math.max(1, parseInt(req.query.limit) || 4);
+        
+        // Calcula quantos registros pular
+        const skip = (page - 1) * limit;
+
+        // Busca as notificações da página atual
         const notifications = await prisma.notificacoes.findMany({
             where: {
-                // Aqui garantimos que o admin/usuário só veja as suas notificações
                 id_usuario: req.usuario.id 
             },
             orderBy: {
                 data_criacao: 'desc'
             },
-            take: 50 // Limite de 50 notificações
+            take: limit,
+            skip: skip
+        });
+
+        // Conta o total de notificações para calcular o número de páginas
+        const total = await prisma.notificacoes.count({
+            where: {
+                id_usuario: req.usuario.id
+            }
         });
 
         const unreadCount = await prisma.notificacoes.count({
@@ -26,9 +40,18 @@ router.get('/', authMiddleware, async (req, res) => {
             }
         });
 
+        // Calcula o total de páginas
+        const totalPages = Math.ceil(total / limit);
+
         res.json({
             notifications,
-            unreadCount
+            unreadCount,
+            pagination: {
+                total,
+                page,
+                limit,
+                totalPages
+            }
         });
     } catch (error) {
         console.error(error);

@@ -69,7 +69,7 @@ router.get('/novos', async (req, res, next) => {
 // GET /produtos — lista com filtros completos (Incluindo Preço)
 router.get('/', async (req, res, next) => {
   try {
-    const { categoria, query, filtro, minPreco, maxPreco } = req.query;
+    const { categoria, query, filtro, minPreco, maxPreco, page, limit, isAdmin } = req.query;
     let prismaWhere = {};
     
     if (categoria) prismaWhere.id_categoria = parseInt(categoria, 10);
@@ -82,13 +82,41 @@ router.get('/', async (req, res, next) => {
       if (maxPreco) prismaWhere.preco.lte = parseFloat(maxPreco);
     }
 
+    // Determina se é para admin (controle de estoque) ou público
+    const pageNum = Math.max(1, parseInt(page) || 1);
+    const limitNum = Math.max(1, parseInt(limit) || (isAdmin ? 10 : 20));
+    const skip = (pageNum - 1) * limitNum;
+
     let queryOptions = { where: prismaWhere, include: { categorias: true } };
     
     if (filtro === 'novos') queryOptions.orderBy = { data_criacao: 'desc' };
     if (filtro === 'menor-preco') queryOptions.orderBy = { preco: 'asc' };
     if (filtro === 'maior-preco') queryOptions.orderBy = { preco: 'desc' };
 
+    // Adiciona paginação se for do admin (controle de estoque)
+    if (isAdmin) {
+      queryOptions.take = limitNum;
+      queryOptions.skip = skip;
+    }
+
     const produtos = await prisma.produtos.findMany(queryOptions);
+    
+    // Se for admin, retorna com informações de paginação
+    if (isAdmin) {
+      const total = await prisma.produtos.count({ where: prismaWhere });
+      const totalPages = Math.ceil(total / limitNum);
+      
+      return res.status(200).json({
+        produtos,
+        pagination: {
+          total,
+          page: pageNum,
+          limit: limitNum,
+          totalPages
+        }
+      });
+    }
+
     return res.status(200).json(produtos);
   } catch (error) {
     next(error);
