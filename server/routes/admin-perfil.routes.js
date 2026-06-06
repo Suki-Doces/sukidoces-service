@@ -2,7 +2,7 @@ import express from 'express';
 import { prisma } from '../lib/prisma.js'; 
 import bcrypt from 'bcrypt';
 import { authMiddleware, adminOnly } from '../middleware/authMiddleware.js';
-import upload from '../middleware/uploadMiddleware.js';
+import { upload } from '../middleware/uploadMiddleware.js';
 
 // Ajuste o nome da função ('uploadImage') para o nome exato exportado no seu service
 import { uploadProductImage } from '../services/cloudinaryUpload.service.js';
@@ -38,7 +38,7 @@ router.put('/', authMiddleware, adminOnly, upload.single('foto_perfil'), async (
     // Validação e Processamento na Nuvem
     if (req.file) {
       // Ajuste os parâmetros caso sua função de upload precise de algo específico além do caminho do arquivo
-      const uploadResult = await uploadImage(req.file.path); 
+      const uploadResult = await uploadProductImage(req.file.path); 
       
       // O Cloudinary geralmente retorna um objeto contendo a propriedade secure_url
       fotoUrl = uploadResult.secure_url || uploadResult.url || uploadResult; 
