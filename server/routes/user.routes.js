@@ -35,6 +35,7 @@ router.get('/perfil', authMiddleware, async (req, res, next) => {
         cpf: true,
         enderecos: true,
         data_nascimento: true,
+        foto_perfil: true,
         role: true,
         data_criacao: true,
         status_id: true
