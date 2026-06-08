@@ -76,7 +76,8 @@ export async function register(req, res) {
       nome: user.nome,
       email: user.email,
       nivel: user.role,
-      data_criacao: user.data_criacao
+      data_criacao: user.data_criacao,
+      foto_perfil: user.foto_perfil
     }
   })
 }
@@ -136,6 +137,7 @@ export async function login(req, res) {
         nome: user.nome,
         email: user.email,
         nivel: user.role,
+        foto_perfil: user.foto_perfil
       }
     })
   }
