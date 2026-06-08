@@ -2,6 +2,8 @@ import express from 'express';
 import { authMiddleware } from '../middleware/authMiddleware.js';
 import { register, login } from '../controller/auth.controller.js';
 import { prisma } from '../lib/prisma.js';
+import { upload } from '../middleware/uploadMiddleware.js';
+import { uploadProductImage } from '../services/cloudinaryUpload.service.js';
 
 const router = express.Router();
 
@@ -44,22 +46,38 @@ router.get('/perfil', authMiddleware, async (req, res, next) => {
 });
 
 // PUT /usuario/perfil
-router.put('/perfil', authMiddleware, async (req, res, next) => {
+// 1. Adicionamos o middleware upload.single('foto_perfil') para capturar a imagem
+router.put('/perfil', authMiddleware, upload.single('foto_perfil'), async (req, res, next) => {
   try {
-    const { nome, telefone, cpf, enderecos, data_nascimento } = req.body;
+    const { nome, telefone, cpf, data_nascimento } = req.body;
+
+    // 2. Como os dados vêm de um FormData, convertemos a string de endereços de volta para objeto
+    let enderecos = req.body.enderecos;
+    if (typeof enderecos === 'string') {
+      enderecos = JSON.parse(enderecos);
+    }
+
+    const dadosParaAtualizar = {
+      ...(nome && { nome: nome.trim() }),
+      ...(telefone !== undefined && { telefone }),
+      ...(cpf !== undefined && { cpf }),
+      ...(enderecos !== undefined && { enderecos }),
+      ...(data_nascimento !== undefined && {
+        data_nascimento: data_nascimento ? new Date(data_nascimento) : null
+      })
+    };
+
+    // 3. Se o cliente tiver enviado uma foto nova, fazemos o upload para o Cloudinary
+    if (req.file) {
+      const fotoUrl = await uploadProductImage(req.file.buffer);
+      if (fotoUrl) {
+        dadosParaAtualizar.foto_perfil = fotoUrl; // Guarda o link do Cloudinary com o tamanho VARCHAR(255) definido
+      }
+    }
+
     const atualizado = await prisma.usuario.update({
       where: { id_usuario: req.usuario.id },
-      data: {
-        ...(nome && { nome: nome.trim() }),
-        ...(telefone !== undefined && { telefone }),
-        ...(cpf !== undefined && { cpf }),
-        ...(enderecos !== undefined && {
-          enderecos: enderecos // O Express/Body-parser já converte o JSON automaticamente
-        }),
-        ...(data_nascimento !== undefined && {
-          data_nascimento: data_nascimento ? new Date(data_nascimento) : null
-        })
-      },
+      data: dadosParaAtualizar,
       select: {
         id_usuario: true,
         nome: true,
@@ -68,9 +86,11 @@ router.put('/perfil', authMiddleware, async (req, res, next) => {
         cpf: true,
         enderecos: true,
         data_nascimento: true,
+        foto_perfil: true, // 4. Certifique-se de retornar a foto de perfil para o frontend atualizar a tela
         role: true
       }
     });
+
     return res.status(200).json({ message: 'Dados atualizados!', user: atualizado });
   } catch (error) { next(error); }
 });

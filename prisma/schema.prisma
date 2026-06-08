@@ -44,8 +44,9 @@ model usuario {
   senha           String           @db.VarChar(255)
   role            String           @default("cliente") @db.VarChar(20)
   telefone        String?          @db.VarChar(20)
-  cpf             String?           @db.VarChar(14)
+  cpf             String?          @db.VarChar(14)
   data_nascimento DateTime?        @db.Date
+  foto_perfil     String?          @db.Text
   status_id       Boolean          @default(true)
   data_criacao    DateTime         @default(now()) @db.Timestamp(0)
   pedidos         pedidos[]
