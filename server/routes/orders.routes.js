@@ -234,7 +234,7 @@ router.patch('/:id/status', authMiddleware, adminOnly, async (req, res) => {
 // ==========================================
 // 4. POST /usuario/pedidos/:id/pagar — Tentar Pagar Novamente
 // ==========================================
-router.post('/usuario/pedidos/:id/pagar', authMiddleware, async (req, res) => {
+router.post(':id/pagar', authMiddleware, async (req, res) => {
   const idPedido = parseInt(req.params.id);
   // Garante a compatibilidade com o formato do JWT
   const usuarioId = req.usuario.id_usuario || req.usuario.id; 
