@@ -36,9 +36,22 @@ router.get('/', authMiddleware, adminOnly, async (req, res) => {
       total_pedidos: c.pedidos.length
     }));
 
-    // Conta o total de clientes
+    // Conta o total de clientes cadastrados
     const total = await prisma.usuario.count({
       where: { role: 'cliente' }
+    });
+
+    // 💡 CORREÇÃO DO ERRO 3: Cálculo estável e global de novos clientes diretamente no banco de dados
+    const seteDiasAtras = new Date();
+    seteDiasAtras.setDate(seteDiasAtras.getDate() - 7);
+
+    const totalNovosClientesGlobal = await prisma.usuario.count({
+      where: {
+        role: 'cliente',
+        data_criacao: {
+          gte: seteDiasAtras // Filtra globalmente quem se cadastrou nos últimos 7 dias
+        }
+      }
     });
 
     const totalPages = Math.ceil(total / limit);
@@ -50,6 +63,10 @@ router.get('/', authMiddleware, adminOnly, async (req, res) => {
         page,
         limit,
         totalPages
+      },
+      // 💡 Adicionado a métrica global para o frontend ler de forma fixa, independente da página
+      estatisticas: {
+        novosClientesUltimos7Dias: totalNovosClientesGlobal
       }
     });
   } catch (error) {
