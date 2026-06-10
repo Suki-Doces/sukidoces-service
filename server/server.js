@@ -68,7 +68,6 @@ app.use('/suki-doces/contatos', rotaContato);
 // necessariamente o prefixo /admin. Mantemos também a montagem em /admin/pedidos
 // para compatibilidade com painéis que ainda usam esse caminho.
 app.use('/suki-doces/pedidos', rotaPedidos);
-app.use('/suki-doces/usuario/pedidos', rotaPedidos);
 
 // --- ROTAS PRIVADAS (Painel Admin) ---
 // Idealmente, você deve passar o seu authMiddleware aqui para proteger tudo!

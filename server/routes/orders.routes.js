@@ -55,20 +55,16 @@ router.post('/', authMiddleware, async (req, res) => {
   }
 
   try {
-    // A. Buscar dados reais dos produtos
     const idsProdutos = produtos.map((item) => item.id_produto);
     const produtosDoBanco = await prisma.produtos.findMany({
       where: { id_produto: { in: idsProdutos } }
     });
 
-    // B. Validar estoque
     for (const itemRequest of produtos) {
       const produtoReal = produtosDoBanco.find((p) => p.id_produto === itemRequest.id_produto);
-
       if (!produtoReal) {
         return res.status(404).json({ mensagem: `Produto ID ${itemRequest.id_produto} não encontrado.` });
       }
-
       if ((produtoReal.quantidade ?? 0) < itemRequest.quantidade) {
         return res.status(400).json({
           mensagem: `Estoque insuficiente para: ${produtoReal.nome}. Disponível: ${produtoReal.quantidade}`
@@ -76,14 +72,12 @@ router.post('/', authMiddleware, async (req, res) => {
       }
     }
 
-    // C. Calcular subtotal
     let subtotal = 0;
     const itensParaSalvar = [];
 
     for (const itemRequest of produtos) {
       const produtoReal = produtosDoBanco.find((p) => p.id_produto === itemRequest.id_produto);
       const preco = Number(produtoReal.preco);
-
       subtotal += preco * itemRequest.quantidade;
       itensParaSalvar.push({
         id_produto: itemRequest.id_produto,
@@ -92,7 +86,6 @@ router.post('/', authMiddleware, async (req, res) => {
       });
     }
 
-    // D. Validar cupom
     let desconto = 0;
     let cupomUsado = null;
 
@@ -100,26 +93,15 @@ router.post('/', authMiddleware, async (req, res) => {
       const cupom = await prisma.cupons.findUnique({
         where: { codigo: codigo_cupom.toUpperCase().trim() }
       });
-
       if (cupom && cupom.ativo && (!cupom.validade || new Date(cupom.validade) >= new Date())) {
-        if (cupom.tipo === 'percentual') {
-          desconto = subtotal * (Number(cupom.valor) / 100);
-        } else {
-          desconto = Math.min(Number(cupom.valor), subtotal);
-        }
+        desconto = cupom.tipo === 'percentual' ? subtotal * (Number(cupom.valor) / 100) : Math.min(Number(cupom.valor), subtotal);
         cupomUsado = cupom;
       }
     }
 
     const valor_total = Math.max(0, subtotal - desconto);
+    let statusInicial = (metodo_pagamento === 'pix' || metodo_pagamento === 'cartao') ? 'pago' : 'pendente';
 
-    // Define status inicial automaticamente
-    let statusInicial = 'pendente';
-    if (metodo_pagamento === 'pix' || metodo_pagamento === 'cartao') {
-      statusInicial = 'pago';
-    }
-
-    // E. TRANSAÇÃO (Salva pedido e baixa estoque)
     const novoPedido = await prisma.$transaction(async (tx) => {
       const pedido = await tx.pedidos.create({
         data: {
@@ -138,11 +120,9 @@ router.post('/', authMiddleware, async (req, res) => {
           data: { quantidade: { decrement: item.quantidade } }
         });
       }
-
       return pedido;
     });
 
-    // Notificação para o Admin
     const admin = await prisma.administradores.findFirst();
     if (admin) {
       await prisma.notificacoes.create({
@@ -155,11 +135,7 @@ router.post('/', authMiddleware, async (req, res) => {
       });
     }
 
-    return res.status(201).json({
-      mensagem: 'Pedido realizado com sucesso!',
-      pedido: novoPedido,
-      resumo: { subtotal, desconto, valor_total }
-    });
+    return res.status(201).json({ mensagem: 'Pedido realizado com sucesso!', pedido: novoPedido });
   } catch (error) {
     console.error('Erro no checkout:', error);
     return res.status(500).json({ mensagem: 'Erro interno ao processar pedido' });
@@ -167,125 +143,71 @@ router.post('/', authMiddleware, async (req, res) => {
 });
 
 // ==========================================
-// 3. PATCH /:id/status (Admin atualiza status)
+// 4. POST /:id/pagar — Tentar Pagar Novamente (Rota Específica ANTES da Genérica)
+// ==========================================
+router.post('/:id/pagar', authMiddleware, async (req, res) => {
+  const idPedido = parseInt(req.params.id);
+  const usuarioId = req.usuario.id_usuario || req.usuario.id; 
+
+  try {
+    const pedido = await prisma.pedidos.findUnique({ where: { id_pedido: idPedido } });
+    if (!pedido) return res.status(404).json({ mensagem: 'Pedido não encontrado.' });
+    if (pedido.id_usuario !== usuarioId) return res.status(403).json({ mensagem: 'Você não tem permissão.' });
+    if (pedido.status !== 'pendente') return res.status(400).json({ mensagem: 'Pedido já processado.' });
+
+    const pedidoPago = await prisma.pedidos.update({
+      where: { id_pedido: idPedido },
+      data: { status: 'pago' }
+    });
+
+    const admin = await prisma.administradores.findFirst();
+    if (admin) {
+      await prisma.notificacoes.create({
+        data: { id_usuario: admin.id_admin, titulo: 'Pagamento Confirmado!', mensagem: `Pedido #${idPedido} pago.`, tipo: 'venda' }
+      });
+    }
+    return res.json({ sucesso: true, pedido: pedidoPago });
+  } catch (error) {
+    console.error('Erro ao pagar:', error);
+    return res.status(500).json({ mensagem: 'Erro interno.' });
+  }
+});
+
+// ==========================================
+// 3. PATCH /:id/status (Admin)
 // ==========================================
 router.patch('/:id/status', authMiddleware, adminOnly, async (req, res) => {
   const idPedido = parseInt(req.params.id);
   const { status } = req.body;
 
   try {
-    const pedido = await prisma.pedidos.findUnique({
-      where: { id_pedido: idPedido },
-      include: { itens_pedido: true }
-    });
+    const pedido = await prisma.pedidos.findUnique({ where: { id_pedido: idPedido }, include: { itens_pedido: true } });
+    if (!pedido) return res.status(404).json({ mensagem: 'Pedido não encontrado' });
 
-    if (!pedido) {
-      return res.status(404).json({ mensagem: 'Pedido não encontrado' });
-    }
-
-    // Devolve estoque ao cancelar
     if (status === 'cancelado' && pedido.status !== 'cancelado') {
       for (const item of pedido.itens_pedido) {
-        await prisma.produtos.update({
-          where: { id_produto: item.id_produto },
-          data: { quantidade: { increment: item.quantidade } }
-        });
+        await prisma.produtos.update({ where: { id_produto: item.id_produto }, data: { quantidade: { increment: item.quantidade } } });
       }
     }
-
-    // Retira estoque novamente caso tire de 'cancelado'
     if (pedido.status === 'cancelado' && status !== 'cancelado') {
       for (const item of pedido.itens_pedido) {
-        await prisma.produtos.update({
-          where: { id_produto: item.id_produto },
-          data: { quantidade: { decrement: item.quantidade } }
-        });
+        await prisma.produtos.update({ where: { id_produto: item.id_produto }, data: { quantidade: { decrement: item.quantidade } } });
       }
     }
 
-    const pedidoAtualizado = await prisma.pedidos.update({
-      where: { id_pedido: idPedido },
-      data: { status }
-    });
-
-    // Avisar o Admin sobre a mudança de status
+    const pedidoAtualizado = await prisma.pedidos.update({ where: { id_pedido: idPedido }, data: { status } });
+    
     const admin = await prisma.administradores.findFirst();
     if (admin) {
       await prisma.notificacoes.create({
-        data: {
-          id_usuario: admin.id_admin,
-          titulo: 'Atualização de Status!',
-          mensagem: `O Pedido #${idPedido} foi atualizado para: ${status.toUpperCase()}.`,
-          tipo: 'pedido'
-        }
+        data: { id_usuario: admin.id_admin, titulo: 'Atualização de Status!', mensagem: `Pedido #${idPedido} agora: ${status}.`, tipo: 'pedido' }
       });
     }
 
-    res.json({
-      mensagem: `Status atualizado para ${status}`,
-      pedido: pedidoAtualizado
-    });
+    res.json({ mensagem: 'Status atualizado', pedido: pedidoAtualizado });
   } catch (error) {
     console.error('Erro ao atualizar status:', error);
     res.status(500).json({ mensagem: 'Erro ao atualizar pedido' });
-  }
-});
-
-// ==========================================
-// 4. POST /usuario/pedidos/:id/pagar — Tentar Pagar Novamente
-// ==========================================
-router.post(':id/pagar', authMiddleware, async (req, res) => {
-  const idPedido = parseInt(req.params.id);
-  // Garante a compatibilidade com o formato do JWT
-  const usuarioId = req.usuario.id_usuario || req.usuario.id; 
-
-  try {
-    const pedido = await prisma.pedidos.findUnique({
-      where: { id_pedido: idPedido }
-    });
-
-    if (!pedido) {
-      return res.status(404).json({ mensagem: 'Pedido não encontrado.' });
-    }
-
-    // Segurança: só o dono pode atualizar
-    if (pedido.id_usuario !== usuarioId) {
-      return res.status(403).json({ mensagem: 'Você não tem permissão para alterar este pedido.' });
-    }
-
-    // Só permite pagar se estiver pendente
-    if (pedido.status !== 'pendente') {
-      return res.status(400).json({ mensagem: 'Este pedido não está mais pendente de pagamento.' });
-    }
-
-    // Simula a aprovação do Pix/Cartão
-    const pedidoPago = await prisma.pedidos.update({
-      where: { id_pedido: idPedido },
-      data: { status: 'pago' }
-    });
-
-    // Notifica o painel administrativo
-    const admin = await prisma.administradores.findFirst();
-    if (admin) {
-      await prisma.notificacoes.create({
-        data: {
-          id_usuario: admin.id_admin,
-          titulo: 'Pagamento Confirmado!',
-          mensagem: `O cliente pagou novamente o Pedido #${idPedido} com sucesso.`,
-          tipo: 'venda'
-        }
-      });
-    }
-
-    return res.json({
-      sucesso: true,
-      mensagem: 'Pagamento realizado com sucesso!',
-      pedido: pedidoPago
-    });
-
-  } catch (error) {
-    console.error('Erro ao tentar pagar novamente:', error);
-    return res.status(500).json({ mensagem: 'Erro interno ao processar o pagamento.' });
   }
 });
 
