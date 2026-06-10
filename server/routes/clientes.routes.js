@@ -75,6 +75,29 @@ router.get('/', authMiddleware, adminOnly, async (req, res) => {
   }
 });
 
+// Rota para contagem de novos clientes nos últimos 7 dias
+// Rota corrigida para contagem de novos clientes (garantindo o filtro de role)
+router.get('/estatisticas/novos', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const seteDiasAtras = new Date();
+    seteDiasAtras.setDate(seteDiasAtras.getDate() - 7);
+
+    const totalNovos = await prisma.usuario.count({
+      where: {
+        role: 'cliente', // <--- ADICIONE ESTE FILTRO
+        data_criacao: {
+          gte: seteDiasAtras
+        }
+      }
+    });
+
+    return res.json({ totalNovos });
+  } catch (error) {
+    console.error('Erro ao contar novos clientes:', error);
+    res.status(500).json({ mensagem: 'Erro ao buscar estatísticas.' });
+  }
+});
+
 // 2. CRIAR CLIENTE (POST)
 router.post('/', authMiddleware, adminOnly, async (req, res) => {
   try {
