@@ -174,40 +174,65 @@ router.post('/:id/pagar', authMiddleware, async (req, res) => {
 });
 
 // ==========================================
-// 3. PATCH /:id/status (Admin)
+// 3. PATCH /:id/status (Admin atualiza status)
 // ==========================================
 router.patch('/:id/status', authMiddleware, adminOnly, async (req, res) => {
   const idPedido = parseInt(req.params.id);
   const { status } = req.body;
 
   try {
-    const pedido = await prisma.pedidos.findUnique({ where: { id_pedido: idPedido }, include: { itens_pedido: true } });
-    if (!pedido) return res.status(404).json({ mensagem: 'Pedido não encontrado' });
+    const pedido = await prisma.pedidos.findUnique({
+      where: { id_pedido: idPedido },
+      include: { itens_pedido: true }
+    });
 
+    if (!pedido) {
+      return res.status(404).json({ mensagem: 'Pedido não encontrado' });
+    }
+
+    // 1. Lógica de estoque (Cancelamento/Reversão)
     if (status === 'cancelado' && pedido.status !== 'cancelado') {
       for (const item of pedido.itens_pedido) {
-        await prisma.produtos.update({ where: { id_produto: item.id_produto }, data: { quantidade: { increment: item.quantidade } } });
+        await prisma.produtos.update({
+          where: { id_produto: item.id_produto },
+          data: { quantidade: { increment: item.quantidade } }
+        });
       }
-    }
-    if (pedido.status === 'cancelado' && status !== 'cancelado') {
+    } else if (pedido.status === 'cancelado' && status !== 'cancelado') {
       for (const item of pedido.itens_pedido) {
-        await prisma.produtos.update({ where: { id_produto: item.id_produto }, data: { quantidade: { decrement: item.quantidade } } });
+        await prisma.produtos.update({
+          where: { id_produto: item.id_produto },
+          data: { quantidade: { decrement: item.quantidade } }
+        });
       }
     }
 
-    const pedidoAtualizado = await prisma.pedidos.update({ where: { id_pedido: idPedido }, data: { status } });
-    
+    // 2. Atualização principal
+    const pedidoAtualizado = await prisma.pedidos.update({
+      where: { id_pedido: idPedido },
+      data: { status }
+    });
+
+    // 3. Notificação (apenas uma vez)
     const admin = await prisma.administradores.findFirst();
     if (admin) {
       await prisma.notificacoes.create({
-        data: { id_usuario: admin.id_admin, titulo: 'Atualização de Status!', mensagem: `Pedido #${idPedido} agora: ${status}.`, tipo: 'pedido' }
+        data: {
+          id_usuario: admin.id_admin,
+          titulo: 'Atualização de Status!',
+          mensagem: `O Pedido #${idPedido} foi atualizado para: ${status.toUpperCase()}.`,
+          tipo: 'pedido'
+        }
       });
     }
 
-    res.json({ mensagem: 'Status atualizado', pedido: pedidoAtualizado });
+    return res.json({
+      mensagem: `Status atualizado para ${status}`,
+      pedido: pedidoAtualizado
+    });
   } catch (error) {
     console.error('Erro ao atualizar status:', error);
-    res.status(500).json({ mensagem: 'Erro ao atualizar pedido' });
+    return res.status(500).json({ mensagem: 'Erro ao atualizar pedido no banco' });
   }
 });
 
