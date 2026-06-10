@@ -147,7 +147,7 @@ router.post('/', authMiddleware, async (req, res) => {
 // ==========================================
 router.post('/:id/pagar', authMiddleware, async (req, res) => {
   const idPedido = parseInt(req.params.id);
-  const usuarioId = req.usuario.id_usuario || req.usuario.id; 
+  const usuarioId = req.usuario.id_usuario || req.usuario.id;
 
   try {
     const pedido = await prisma.pedidos.findUnique({ where: { id_pedido: idPedido } });
@@ -233,6 +233,83 @@ router.patch('/:id/status', authMiddleware, adminOnly, async (req, res) => {
   } catch (error) {
     console.error('Erro ao atualizar status:', error);
     return res.status(500).json({ mensagem: 'Erro ao atualizar pedido no banco' });
+  }
+});
+
+// ==========================================
+// 5. PATCH /:id/cancelar — Cliente cancela o próprio pedido
+// ==========================================
+router.patch('/:id/cancelar', authMiddleware, async (req, res) => {
+  const idPedido = parseInt(req.params.id);
+  // Pega o ID do usuário logado (cliente) vindo do token
+  const usuarioId = req.usuario.id_usuario || req.usuario.id;
+
+  try {
+    // 1. Busca o pedido incluindo os itens para poder devolver ao estoque se necessário
+    const pedido = await prisma.pedidos.findUnique({
+      where: { id_pedido: idPedido },
+      include: { itens_pedido: true }
+    });
+
+    if (!pedido) {
+      return res.status(404).json({ mensagem: 'Pedido não encontrado.' });
+    }
+
+    // 2. Segurança: Garante que o cliente só pode cancelar o seu próprio pedido
+    if (pedido.id_usuario !== usuarioId) {
+      return res.status(403).json({ mensagem: 'Você não tem permissão para cancelar este pedido.' });
+    }
+
+    // 3. Regra de negócio: Só pode cancelar se estiver 'pendente' ou 'pago'
+    if (pedido.status === 'cancelado') {
+      return res.status(400).json({ mensagem: 'Este pedido já está cancelado.' });
+    }
+
+    if (pedido.status !== 'pendente' && pedido.status !== 'pago') {
+      return res.status(400).json({
+        mensagem: 'Este pedido já está em preparo ou rota de entrega e não pode mais ser cancelado.'
+      });
+    }
+
+    // 4. Executa a atualização do status e a devolução do estoque numa transação
+    const pedidoCancelado = await prisma.$transaction(async (tx) => {
+      // Devolve a quantidade de cada produto para o estoque
+      for (const item of pedido.itens_pedido) {
+        await tx.produtos.update({
+          where: { id_produto: item.id_produto },
+          data: { quantidade: { increment: item.quantidade } }
+        });
+      }
+
+      // Atualiza o status do pedido para cancelado
+      return await tx.pedidos.update({
+        where: { id_pedido: idPedido },
+        data: { status: 'cancelado' }
+      });
+    });
+
+    // 5. Cria uma notificação para o Painel do Administrador saber do cancelamento
+    const admin = await prisma.administradores.findFirst();
+    if (admin) {
+      await prisma.notificacoes.create({
+        data: {
+          id_usuario: admin.id_admin,
+          titulo: 'Pedido Cancelado pelo Cliente',
+          mensagem: `O cliente cancelou o Pedido #${idPedido}. O estoque foi devolvido.`,
+          tipo: 'pedido'
+        }
+      });
+    }
+
+    return res.json({
+      sucesso: true,
+      mensagem: 'Pedido cancelado com sucesso!',
+      pedido: pedidoCancelado
+    });
+
+  } catch (error) {
+    console.error('Erro ao cancelar pedido pelo cliente:', error);
+    return res.status(500).json({ mensagem: 'Erro interno ao processar cancelamento.' });
   }
 });
 
