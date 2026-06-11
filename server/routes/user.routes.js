@@ -1,4 +1,5 @@
 import express from 'express';
+import bcrypt from 'bcrypt'; // 1. IMPORT FALTANDO ADICIONADO AQUI!
 import { authMiddleware } from '../middleware/authMiddleware.js';
 import { register, login } from '../controller/auth.controller.js';
 import { prisma } from '../lib/prisma.js';
@@ -19,26 +20,18 @@ router.post('/logout', authMiddleware, (req, res) => {
 
 // ==========================================
 // PERFIL DO USUÁRIO LOGADO
-// Usa req.usuario.id do token JWT — não aceita ID na URL por segurança
 // ==========================================
 
 // GET /usuario/perfil
 router.get('/perfil', authMiddleware, async (req, res, next) => {
   try {
+    const usuarioId = req.usuario.id_usuario || req.usuario.id; // Proteção extra de ID
     const usuario = await prisma.usuario.findUnique({
-      where: { id_usuario: req.usuario.id },
+      where: { id_usuario: usuarioId },
       select: {
-        id_usuario: true,
-        nome: true,
-        email: true,
-        telefone: true,
-        cpf: true,
-        enderecos: true,
-        data_nascimento: true,
-        foto_perfil: true,
-        role: true,
-        data_criacao: true,
-        status_id: true
+        id_usuario: true, nome: true, email: true, telefone: true,
+        cpf: true, enderecos: true, data_nascimento: true,
+        foto_perfil: true, role: true, data_criacao: true, status_id: true
       }
     });
     if (!usuario) return res.status(404).json({ message: 'Usuário não encontrado' });
@@ -47,12 +40,11 @@ router.get('/perfil', authMiddleware, async (req, res, next) => {
 });
 
 // PUT /usuario/perfil
-// 1. Adicionamos o middleware upload.single('foto_perfil') para capturar a imagem
 router.put('/perfil', authMiddleware, upload.single('foto_perfil'), async (req, res, next) => {
   try {
+    const usuarioId = req.usuario.id_usuario || req.usuario.id;
     const { nome, telefone, cpf, data_nascimento } = req.body;
 
-    // 2. Como os dados vêm de um FormData, convertemos a string de endereços de volta para objeto
     let enderecos = req.body.enderecos;
     if (typeof enderecos === 'string') {
       enderecos = JSON.parse(enderecos);
@@ -68,27 +60,20 @@ router.put('/perfil', authMiddleware, upload.single('foto_perfil'), async (req, 
       })
     };
 
-    // 3. Se o cliente tiver enviado uma foto nova, fazemos o upload para o Cloudinary
     if (req.file) {
       const fotoUrl = await uploadProductImage(req.file.buffer);
       if (fotoUrl) {
-        dadosParaAtualizar.foto_perfil = fotoUrl; // Guarda o link do Cloudinary com o tamanho VARCHAR(255) definido
+        dadosParaAtualizar.foto_perfil = fotoUrl;
       }
     }
 
     const atualizado = await prisma.usuario.update({
-      where: { id_usuario: req.usuario.id },
+      where: { id_usuario: usuarioId },
       data: dadosParaAtualizar,
       select: {
-        id_usuario: true,
-        nome: true,
-        email: true,
-        telefone: true,
-        cpf: true,
-        enderecos: true,
-        data_nascimento: true,
-        foto_perfil: true, // 4. Certifique-se de retornar a foto de perfil para o frontend atualizar a tela
-        role: true
+        id_usuario: true, nome: true, email: true, telefone: true,
+        cpf: true, enderecos: true, data_nascimento: true,
+        foto_perfil: true, role: true
       }
     });
 
@@ -99,6 +84,7 @@ router.put('/perfil', authMiddleware, upload.single('foto_perfil'), async (req, 
 // PUT /usuario/senha
 router.put('/senha', authMiddleware, async (req, res, next) => {
   try {
+    const usuarioId = req.usuario.id_usuario || req.usuario.id;
     const { senhaAtual, novaSenha } = req.body;
 
     if (!senhaAtual || !novaSenha)
@@ -107,14 +93,15 @@ router.put('/senha', authMiddleware, async (req, res, next) => {
     if (novaSenha.length < 6)
       return res.status(400).json({ message: 'A nova senha deve ter pelo menos 6 caracteres' });
 
-    const usuario = await prisma.usuario.findUnique({ where: { id_usuario: req.usuario.id } });
+    const usuario = await prisma.usuario.findUnique({ where: { id_usuario: usuarioId } });
     if (!usuario) return res.status(404).json({ message: 'Usuário não encontrado' });
 
+    // 2. O bcrypt agora vai funcionar corretamente!
     const senhaValida = await bcrypt.compare(senhaAtual, usuario.senha);
     if (!senhaValida) return res.status(401).json({ message: 'Senha atual incorreta' });
 
     await prisma.usuario.update({
-      where: { id_usuario: req.usuario.id },
+      where: { id_usuario: usuarioId },
       data: { senha: await bcrypt.hash(novaSenha, 10) }
     });
 
@@ -122,11 +109,12 @@ router.put('/senha', authMiddleware, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
-// GET /usuario/pedidos — histórico de pedidos do usuário logado
+// GET /usuario/pedidos
 router.get('/pedidos', authMiddleware, async (req, res, next) => {
   try {
+    const usuarioId = req.usuario.id_usuario || req.usuario.id;
     const pedidos = await prisma.pedidos.findMany({
-      where: { id_usuario: req.usuario.id },
+      where: { id_usuario: usuarioId },
       include: {
         itens_pedido: {
           include: { produtos: { select: { nome: true, imagem: true, preco: true } } }
@@ -138,31 +126,25 @@ router.get('/pedidos', authMiddleware, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
-// ==========================================
-// ADICIONADO: CANCELAMENTO COM REGRA DE 2 HORAS
 // PATCH /usuario/pedidos/:id/cancelar
-// Regra de Negócio: cancelamento permitido até 2 horas após a compra
-// ==========================================
 router.patch('/pedidos/:id/cancelar', authMiddleware, async (req, res, next) => {
   try {
     const idPedido = parseInt(req.params.id);
-    const usuarioId = req.usuario.id;
+    const usuarioId = req.usuario.id_usuario || req.usuario.id;
 
-    // 1. Busca o pedido e verifica se pertence ao usuário logado
     const pedido = await prisma.pedidos.findUnique({
-      where: { id_pedido: idPedido }
+      where: { id_pedido: idPedido },
+      include: { itens_pedido: true } // Já incluímos os itens aqui para devolver o estoque mais fácil
     });
 
     if (!pedido) {
       return res.status(404).json({ mensagem: 'Pedido não encontrado.' });
     }
 
-    // Segurança: só o dono do pedido pode cancelar
     if (pedido.id_usuario !== usuarioId) {
       return res.status(403).json({ mensagem: 'Você não tem permissão para cancelar este pedido.' });
     }
 
-    // 2. Verificar se o pedido já está cancelado ou entregue
     if (pedido.status === 'cancelado') {
       return res.status(400).json({ mensagem: 'Este pedido já foi cancelado.' });
     }
@@ -170,10 +152,9 @@ router.patch('/pedidos/:id/cancelar', authMiddleware, async (req, res, next) => 
       return res.status(400).json({ mensagem: 'Pedidos entregues não podem ser cancelados.' });
     }
 
-    // 3. REGRA DE NEGÓCIO: cancelamento permitido até 2 horas após a compra
     const dataCompra = new Date(pedido.data_pedido);
     const agora = new Date();
-    const diferencaHoras = (agora - dataCompra) / (1000 * 60 * 60); // conversão ms → horas
+    const diferencaHoras = (agora - dataCompra) / (1000 * 60 * 60);
 
     if (diferencaHoras > 2) {
       const horasPassadas = diferencaHoras.toFixed(1);
@@ -183,25 +164,22 @@ router.patch('/pedidos/:id/cancelar', authMiddleware, async (req, res, next) => 
       });
     }
 
-    // 4. Cancelar o pedido
-    const pedidoCancelado = await prisma.pedidos.update({
-      where: { id_pedido: idPedido },
-      data: { status: 'cancelado' }
-    });
-
-    // 5. Devolver estoque dos produtos
-    const itensPedido = await prisma.itens_pedido.findMany({
-      where: { id_pedido: idPedido }
-    });
-
-    for (const item of itensPedido) {
-      await prisma.produtos.update({
-        where: { id_produto: item.id_produto },
-        data: { quantidade: { increment: item.quantidade } }
+    // 3. TRANSACTION ADICIONADO: Atualiza o status E devolve o estoque de forma 100% segura
+    const pedidoCancelado = await prisma.$transaction(async (tx) => {
+      const pedidoAtualizado = await tx.pedidos.update({
+        where: { id_pedido: idPedido },
+        data: { status: 'cancelado' }
       });
-    }
 
-    // 6. Notificar o admin sobre o cancelamento
+      for (const item of pedido.itens_pedido) {
+        await tx.produtos.update({
+          where: { id_produto: item.id_produto },
+          data: { quantidade: { increment: item.quantidade } }
+        });
+      }
+      return pedidoAtualizado;
+    });
+
     const admin = await prisma.administradores.findFirst();
     if (admin) {
       await prisma.notificacoes.create({
